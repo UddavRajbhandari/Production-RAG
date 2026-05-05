@@ -1,0 +1,100 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# =========================
+# Jupyter / notebooks
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# IDEs
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Project-specific (RAG)
+# =========================
+
+# Vector DB (Qdrant local storage)
+qdrant_storage/
+qdrant_data/
+*.db
+
+# Embeddings / cache files
+.cache/
+huggingface/
+.huggingface/
+transformers_cache/
+sentence_transformers/
+
+# LlamaIndex / LangChain caches
+storage/
+index_storage/
+persist/
+chroma_db/
+faiss_index/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Model files (VERY IMPORTANT if you download local models)
+*.bin
+*.pt
+*.pth
+*.safetensors
+
+# Large dataset files (PDFs, DOCX, etc. if not tracking)
+data/raw/
+datasets/
+raw_data/
+processed_data/
+*docx
+docs/img
+
+# OS / Windows metadata
+desktop.ini
+
+# =========================
+# Docker (if used later)
+# =========================
+.dockerignore

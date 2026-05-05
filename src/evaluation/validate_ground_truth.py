@@ -1,0 +1,53 @@
+
+import json
+import sys
+import os
+
+def validate(path: str) -> None:
+    if not os.path.exists(path):
+        print(f"ERROR: File not found at {path}")
+        sys.exit(1)
+        
+    with open(path) as f:
+        try:
+            pairs = json.load(f)
+        except json.JSONDecodeError:
+            print(f"ERROR: {path} is not a valid JSON file.")
+            sys.exit(1)
+
+    errors = []
+    seen_ids = set()
+
+    for i, pair in enumerate(pairs):
+        qid = pair.get("question_id", f"[index {i}]")
+
+        if qid in seen_ids:
+            errors.append(f"{qid}: duplicate question_id")
+        seen_ids.add(qid)
+
+        if not pair.get("question", "").strip():
+            errors.append(f"{qid}: empty question")
+
+        if not pair.get("ground_truth_answer", "").strip():
+            errors.append(f"{qid}: empty ground_truth_answer")
+
+        if pair.get("domain_tag") not in {"financial", "academic", "technical"}:
+            errors.append(f"{qid}: invalid domain_tag '{pair.get('domain_tag')}'")
+
+    # Track B check — only warn, not error, on empty chunk IDs
+    empty_chunks = [p["question_id"] for p in pairs if not p.get("ground_truth_chunk_ids")]
+    if empty_chunks:
+        print(f"WARNING: {len(empty_chunks)} pairs have no chunk IDs yet (expected in Track A).")
+
+    if errors:
+        print(f"VALIDATION FAILED — {len(errors)} error(s):")
+        for e in errors:
+            print(f"  - {e}")
+        sys.exit(1)
+    else:
+        print(f"VALIDATION PASSED — {len(pairs)} pairs, {len(empty_chunks)} pending chunk IDs.")
+
+if __name__ == "__main__":
+    # Ensure directory exists before running
+    target_path = sys.argv[1] if len(sys.argv) > 1 else "data/ground_truth/ground_truth.json"
+    validate(target_path)
