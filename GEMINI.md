@@ -214,4 +214,4 @@ Run in iteration order. Do not skip ahead.
 
 ---
 
-*Last updated: May 2026 — ByteMonk Project 02 | Pre-Phase 1 complete — Phase 1 implementation active*
+*Last updated: May 2026 — Project 02 | Pre-Phase 1 complete — Phase 1 implementation active*

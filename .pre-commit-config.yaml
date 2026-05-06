@@ -1,0 +1,54 @@
+repos:
+  # ── Standard file hygiene ──────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']         # Block files > 1MB (e.g. accidental model weights)
+      - id: check-merge-conflict
+      - id: debug-statements           # Catches leftover breakpoint() / pdb.set_trace()
+
+  # ── Secret scanning ────────────────────────────────────────────────────────
+  # Prevents Neon/Postgres credentials, API keys, tokens from being committed.
+  # Run `detect-secrets scan > .secrets.baseline` once to create the baseline.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  # ── Ruff: linting + formatting ─────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ── Mypy: static type checking ─────────────────────────────────────────────
+  # Catches RAGState TypedDict field mismatches before runtime.
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        args: [--config-file, pyproject.toml]
+        additional_dependencies:
+          - types-PyYAML          # for settings.yaml loading
+          - types-requests
+
+  # ── Ground truth schema validation ────────────────────────────────────────
+  # FIX: Removed `.venv/Scripts/python` (Windows-only path — breaks on Linux/CI).
+  # Using `language: python` lets pre-commit manage its own venv cross-platform.
+  - repo: local
+    hooks:
+      - id: validate-ground-truth
+        name: Validate Ground Truth Schema
+        entry: python src/evaluation/validate_ground_truth.py
+        language: python
+        files: ^data/ground_truth/ground_truth\.json$
+        pass_filenames: false
+        additional_dependencies: []    # add any deps validate_ground_truth.py needs

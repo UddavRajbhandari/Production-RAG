@@ -1,0 +1,77 @@
+[project]
+name = "production-rag"
+version = "0.1.0"
+description = "Production-Grade RAG Pipeline with Evaluation Layer"
+requires-python = ">=3.10"
+# Runtime dependencies should also live in requirements.txt for Docker compatibility.
+# Keep this list in sync.
+dependencies = []
+
+# ── Ruff: linting & formatting ─────────────────────────────────────────────────
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # PEP 8 style errors
+    "F",    # Pyflakes — unused imports, undefined variables
+    "I",    # Import sorting (replaces isort)
+    "B",    # Bugbear — common bugs; catches mutable defaults in LangGraph nodes
+    "C4",   # Better comprehension patterns
+    "SIM",  # Simplification suggestions
+    "UP",   # Pyupgrade — enforce modern Python 3.10+ syntax
+    "N",    # Naming conventions (PEP 8)
+    "ANN",  # Type annotation enforcement (complements mypy)
+]
+ignore = [
+    "ANN101",  # Missing type annotation for `self` — too noisy
+    "ANN102",  # Missing type annotation for `cls`
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN"]   # Don't require annotations in test files
+
+# ── Mypy: static type checking ─────────────────────────────────────────────────
+# Critical for this project: catches RAGState TypedDict field typos at check time,
+# not at runtime inside a LangGraph execution.
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+no_implicit_optional = true      # FIX: `x: str = None` must be `x: Optional[str] = None`
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+
+# Third-party libraries without stubs — silence missing import errors for these
+[[tool.mypy.overrides]]
+module = [
+    "qdrant_client.*",
+    "llama_index.*",
+    "langchain.*",
+    "langgraph.*",
+    "ragas.*",
+    "sentence_transformers.*",
+    "rank_bm25.*",
+    "unstructured.*",
+    "fitz.*",                    # PyMuPDF
+]
+ignore_missing_imports = true
+
+# ── Pytest ─────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+# Test markers — use `pytest -m unit` or `pytest -m integration`
+markers = [
+    "unit: fast, no external dependencies",
+    "integration: requires Qdrant and Postgres running locally",
+    "regression: RAGAS evaluation against golden set (slow)",
+]

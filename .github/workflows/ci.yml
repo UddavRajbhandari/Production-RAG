@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ── Job 1: Lint & Type Check ─────────────────────────────────────────────────
+  quality:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'                   # FIX: caches pip downloads across runs
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run Ruff (lint)
+        run: ruff check .
+
+      - name: Run Ruff (format check)
+        run: ruff format --check .
+
+      - name: Run Mypy
+        run: mypy src
+
+  # ── Job 2: Unit & Integration Tests ─────────────────────────────────────────
+  tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: quality                       # only run if quality passes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Validate Ground Truth Schema
+        run: |
+          python src/evaluation/validate_ground_truth.py data/ground_truth/ground_truth.json
+
+      - name: Run Unit Tests
+        run: pytest tests/unit -v
+
+      - name: Run Integration Tests
+        run: pytest tests/integration -v
+
+  # ── Job 3: RAGAS Regression Guard ────────────────────────────────────────────
+  # Runs a fast RAGAS evaluation on a small golden QA set (10–15 pairs).
+  # Fails the pipeline if Context Precision drops below 0.75 or
+  # Faithfulness drops below 0.80, as defined in config/settings.yaml.
+  #
+  # NOTE: This job requires a live LLM endpoint.
+  # Set OPENAI_API_KEY (or your local LLM base URL) as a GitHub Actions secret.
+  # If running fully local (Ollama), this job should run on a self-hosted runner.
+  ragas-regression:
+    name: RAGAS Regression Guard
+    runs-on: ubuntu-latest
+    needs: tests
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}   # replace with your LLM secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run RAGAS regression on golden set
+        run: |
+          python src/evaluation/ragas_regression.py \
+            --golden-set data/ground_truth/golden_set_ci.json \
+            --config config/settings.yaml \
+            --fail-on-regression
+        # This script must exit with code 1 if any threshold is breached.
+        # Thresholds are read directly from config/settings.yaml:
+        #   evaluation.ragas.alert_threshold_cp   (Context Precision ≥ 0.75)
+        #   evaluation.ragas.alert_threshold_faith (Faithfulness ≥ 0.80)
+
+  # ── Job 4: Docker Build Check ────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t production-rag:ci-check .

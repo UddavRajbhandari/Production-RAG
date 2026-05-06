@@ -1,0 +1,84 @@
+# Production RAG Pipeline Configuration
+# Project 02 | Version 1.1
+#
+# All tunable parameters live here. No magic numbers in code.
+# Reference this file via: config = yaml.safe_load(open("config/settings.yaml"))
+
+ingestion:
+  chunk_size: 512              # Structure-aware chunk size (tokens)
+  chunk_overlap: 50            # Overlap between adjacent chunks
+  min_char_threshold: 100      # Filter for low-text pages (audit finding #1)
+  window_size: 3               # SentenceWindowNodeParser context size
+  table_extraction: true       # Enable unstructured table-to-markdown parsing
+
+storage:
+  qdrant:
+    collection_name: "production_rag_v1"
+    vector_size: 384           # all-MiniLM-L6-v2 output dimension
+    distance: "Cosine"
+    host: "localhost"
+    port: 6333
+  bm25:
+    persist_path: "storage/bm25_index.pkl"
+  postgres:
+    schema_name: "rag_pipeline"
+    # Connection string loaded from env: DATABASE_URL
+    # Never hardcode credentials here.
+
+retrieval:
+  dense_top_k: 20
+  sparse_top_k: 20
+  rrf_k: 60                    # Reciprocal Rank Fusion constant (k=60 standard default)
+  rerank_top_n: 5              # Candidates passed to cross-encoder after RRF
+
+latency:
+  # Sub-budgets must sum to ≤ total_p95_ms.
+  # Profile on target hardware (htop / free -h on clean boot first).
+  total_p95_ms: 280
+  retrieval_budget_ms: 120     # Qdrant dense + BM25 sparse + RRF
+  rerank_budget_ms: 80         # Local cross-encoder (CPU) — measure this first
+  generation_budget_ms: 80     # Quantized LLM inference via Ollama/llama.cpp
+  # WARNING: rerank_budget_ms for a local cross-encoder on CPU is environment-
+  # dependent. Run scripts/profile_latency.py before committing to these values.
+
+models:
+  embedding: "sentence-transformers/all-MiniLM-L6-v2"
+  reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+  # FIX: Pinned to a specific quantized variant for reproducibility.
+  # "llama3" alone is ambiguous across Ollama versions and machines.
+  # Confirm this tag is available on your machine: `ollama list`
+  llm_local: "llama3:8b-instruct-q4_K_M"
+
+  # Alternative for Auditor node if second model is loaded (requires ~8 GB free RAM):
+  # llm_auditor: "mistral:7b-instruct-q4_K_M"
+
+evaluation:
+  ragas:
+    # CI regression thresholds — ragas_regression.py reads these directly.
+    # If scores fall below these in CI, the pipeline fails.
+    alert_threshold_cp: 0.75        # Context Precision floor
+    alert_threshold_faith: 0.80     # Faithfulness floor
+    alert_threshold_ar: 0.75        # Answer Relevancy floor
+    alert_threshold_cr: 0.75        # Context Recall floor
+
+    # Production monitoring — sample 5% of queries weekly.
+    # If CP drops below reindex_trigger_cp, trigger re-indexing review.
+    reindex_trigger_cp: 0.75
+    production_sample_rate: 0.05
+
+  ground_truth:
+    path: "data/ground_truth/ground_truth.json"
+    golden_set_ci: "data/ground_truth/golden_set_ci.json"  # small fast subset for CI
+    min_pairs: 50                    # Phase 6 will not start until this is met
+
+logging:
+  level: "INFO"
+  format: "json"                     # Structured JSON logs — never plain print()
+  per_query_fields:
+    - retrieval_latency_ms
+    - rerank_latency_ms
+    - generation_latency_ms
+    - total_latency_ms
+    - validation_passed
+    - cost_usd

@@ -1,11 +1,11 @@
 # Ground Truth Source Analysis
-**ByteMonk | Project 02 | Pre-Phase 1 Activity**
+**Project 02 | Pre-Phase 1 Activity**
 
 ## Overview
-This document tracks which files from `@data/raw` were utilized to generate the initial **25 Ground Truth QA pairs** (Track A). 
+This document tracks which files from `@data/raw` were utilized to generate the initial **25 Ground Truth QA pairs** (Track A).
 
-**Total Files in Corpus**: 33  
-**Files Analyzed for QA**: 10  
+**Total Files in Corpus**: 33
+**Files Analyzed for QA**: 10
 **Status**: Initial batch (25/60) complete.
 
 ## Analysis Summary Table
@@ -25,7 +25,7 @@ This document tracks which files from `@data/raw` were utilized to generate the 
 | `worldbankSECBOS-8b71cac3...pdf` | Financial | 67 | 2 | President Ajay Banga, 2025 Fiscal Year period. |
 
 ## Clarification on Coverage
-We did **not** read all 33 documents for question generation. To meet the "Track A" milestone efficiently, we focused on 10 representative documents that span all three required domains (`financial`, `academic`, `technical`). 
+We did **not** read all 33 documents for question generation. To meet the "Track A" milestone efficiently, we focused on 10 representative documents that span all three required domains (`financial`, `academic`, `technical`).
 
 The remaining 23 documents were:
 1.  **Audited** (for structure/parsing issues) in `docs/audit_pre_phase.md`.
