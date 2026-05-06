@@ -1,9 +1,17 @@
+"""
+Corpus Audit Script
+Performs a sanity check on a small sample of PDF and DOCX files.
+Identifies initial layout, text yield, and table presence.
+"""
 
-import fitz  # PyMuPDF
-import docx
 import os
 
-def audit_pdf(file_path):
+import docx
+import fitz  # PyMuPDF
+
+
+def audit_pdf(file_path: str) -> None:
+    """Logs page count, text length, and table detection for PDFs."""
     print(f"\n--- Auditing PDF: {os.path.basename(file_path)} ---")
     try:
         doc = fitz.open(file_path)
@@ -12,14 +20,21 @@ def audit_pdf(file_path):
             page = doc[i]
             text = page.get_text()
             tables = page.find_tables()
-            print(f"Page {i+1}: {len(text)} chars, {len(tables.tables)} potential tables detected")
+            print(
+                f"Page {i+1}: {len(text)} chars, "
+                f"{len(tables.tables)} potential tables detected"
+            )
             if len(text) < 100:
-                print(f"  [!] Warning: Very low text on page {i+1} (Possible image-only?)")
+                print(
+                    f"  [!] Warning: Very low text on page {i+1} (Possible image-only?)"
+                )
         doc.close()
     except Exception as e:
         print(f"  [!] Error auditing PDF: {e}")
 
-def audit_docx(file_path):
+
+def audit_docx(file_path: str) -> None:
+    """Logs paragraph and table counts for DOCX files."""
     print(f"\n--- Auditing DOCX: {os.path.basename(file_path)} ---")
     try:
         doc = docx.Document(file_path)
@@ -28,20 +43,22 @@ def audit_docx(file_path):
     except Exception as e:
         print(f"  [!] Error auditing DOCX: {e}")
 
+
 # Sample files for audit based on directory listing
-samples = [
+samples: list[str] = [
     "data/raw/pdf/Access-to-Information-2023-annual-report.pdf",
     "data/raw/pdf/2605.02520v1.pdf",
     "data/raw/pdf/World-Bank-Access-to-Information-FY22-annual-report.pdf",
     "data/raw/docx/f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
-    "data/raw/pdf/2605.02661v1.pdf"
+    "data/raw/pdf/2605.02661v1.pdf",
 ]
 
-for sample in samples:
-    if os.path.exists(sample):
-        if sample.endswith(".pdf"):
-            audit_pdf(sample)
-        elif sample.endswith(".docx"):
-            audit_docx(sample)
-    else:
-        print(f"File not found: {sample}")
+if __name__ == "__main__":
+    for sample in samples:
+        if os.path.exists(sample):
+            if sample.endswith(".pdf"):
+                audit_pdf(sample)
+            elif sample.endswith(".docx"):
+                audit_docx(sample)
+        else:
+            print(f"File not found: {sample}")

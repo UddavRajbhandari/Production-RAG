@@ -1,10 +1,11 @@
-
 [
   {
     "question_id": "gt_001",
     "question": "What period does the fiscal year 2023 (FY23) cover in the World Bank Access to Information report?",
     "ground_truth_answer": "In the World Bank Access to Information report, fiscal year 2023 (FY23) specifically refers to the period beginning on July 1, 2022, and ending on June 30, 2023. During this fiscal year, the Bank continued its commitment to transparency and accountability through the rigorous implementation of its Access to Information (ATI) Policy.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "71133121-29be-43b0-9873-7dc17bced5db"
+    ],
     "source_document": "Access-to-Information-2023-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -12,7 +13,9 @@
     "question_id": "gt_002",
     "question": "How many page views were recorded for the World Bank's Open Data in the FY23 Access to Information report?",
     "ground_truth_answer": "According to the FY23 Access to Information report, the World Bank's Open Data initiatives recorded over 114 million page views. The report also highlights that there are over 15,700 available development datasets, indicators, and visualizations, which resulted in over 2.5 million downloads.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "6dc33ff1-ffd5-44ba-bb87-c6ef34f3574f"
+    ],
     "source_document": "Access-to-Information-2023-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -20,7 +23,9 @@
     "question_id": "gt_003",
     "question": "Which retrieval strategy achieved the best composite score in the benchmarking study for biomedical RAG?",
     "ground_truth_answer": "In the systematic empirical comparison of retrieval strategies for biomedical RAG, Cross-Encoder Reranking achieved the best composite score of 0.827. It also attained the highest contextual precision (0.852), confirming that detailed query-document interaction yields the most significant retrieval gains in the biomedical domain.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "8de899ac-c240-4e89-8c7e-77f58c1435a7"
+    ],
     "source_document": "2605.02520v1.pdf",
     "domain_tag": "academic"
   },
@@ -28,7 +33,9 @@
     "question_id": "gt_004",
     "question": "What are the four DeepEval metrics used in the evaluation framework of the biomedical RAG study?",
     "ground_truth_answer": "The evaluation framework for the biomedical RAG study utilized four DeepEval metrics: (1) contextual precision, which evaluates the signal-to-noise ratio in the retrieved context; (2) contextual recall, which assesses the coverage of necessary evidence; (3) faithfulness, which measures the factual consistency of the generated answer with the provided context; and (4) answer relevancy, which determines how well the answer addresses the question.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "68b53ae8-b783-47c0-a082-7352b01ea89c"
+    ],
     "source_document": "2605.02520v1.pdf",
     "domain_tag": "academic"
   },
@@ -44,7 +51,9 @@
     "question_id": "gt_006",
     "question": "According to the Python 3.7.0 tutorial contents, which section covers 'Using the Python Interpreter'?",
     "ground_truth_answer": "According to the table of contents in the Python 3.7.0 tutorial, Section 2 is titled 'Using the Python Interpreter' (starting on page 5). This section includes sub-topics such as 'Invoking the Interpreter' (2.1) and 'The Interpreter and Its Environment' (2.2).",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "8c7a5942-e940-4367-b2b1-d0c0dcfc12e7"
+    ],
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -52,7 +61,9 @@
     "question_id": "gt_007",
     "question": "What is the theme of the World Bank's Access to Information Annual Report for FY 2012?",
     "ground_truth_answer": "The theme of the World Bank's Access to Information Annual Report for Fiscal Year 2012 is 'Moving Forward Transparency and Accountability'. This theme is prominently displayed on the cover and the introductory pages of the report.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "43d5fdf2-7044-436c-a4b0-7cd338af6ec9"
+    ],
     "source_document": "AtI-annual-report-2012.pdf",
     "domain_tag": "financial"
   },
@@ -60,7 +71,9 @@
     "question_id": "gt_008",
     "question": "Does the World Bank guarantee the accuracy of the data included in the FY 2012 Access to Information report?",
     "ground_truth_answer": "No, the World Bank explicitly states on the copyright and acknowledgments page (page ii) that it does not guarantee the accuracy of the data included in the FY 2012 report. The boundaries, colors, and other information shown on maps do not imply any judgment on the part of the Bank concerning the legal status of any territory.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "e2a86198-ba78-4b6d-8b6d-50a3de2af5f7"
+    ],
     "source_document": "AtI-annual-report-2012.pdf",
     "domain_tag": "financial"
   },
@@ -68,7 +81,9 @@
     "question_id": "gt_009",
     "question": "Who should be contacted for queries on rights and licenses for the FY 2014 Access to Information report?",
     "ground_truth_answer": "Queries regarding rights and licenses for the FY 2014 Access to Information report should be addressed to World Bank Publications, The World Bank Group, located at 1818 H Street NW, Washington, DC 20433, USA. Alternatively, they can be reached via fax at 202-522-2625 or e-mail at pubrights@worldbank.org.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "9e1d8007-22e1-4a7e-8b78-8b9ab41181ba"
+    ],
     "source_document": "AtI-annual-report-2014.pdf",
     "domain_tag": "financial"
   },
@@ -76,7 +91,9 @@
     "question_id": "gt_010",
     "question": "What is ChipLingo and what are its three primary stages of training?",
     "ground_truth_answer": "ChipLingo is a systematic training pipeline for domain-adapted large language models (LLMs) specifically tailored to Electronic Design Automation (EDA) scenarios. Its proposed pipeline consists of three stages: (1) constructing domain-specific corpora through multi-source data curation and question-answering (QA) augmentation; (2) a domain-adaptive pretraining phase comparing different parameter training strategies; and (3) instruction alignment and RAG scenario training to enhance the model's ability to leverage external knowledge.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "5c4e05e2-2677-4e8e-8734-b6fc104257e2"
+    ],
     "source_document": "2604.27415v1.pdf",
     "domain_tag": "academic"
   },
@@ -84,7 +101,9 @@
     "question_id": "gt_011",
     "question": "What accuracy did ChipLingo-32B achieve on the EDA-Bench benchmark?",
     "ground_truth_answer": "Experimental results provided in the study show that ChipLingo-32B achieved 70.02% accuracy on the EDA-Bench benchmark, approaching the performance of leading closed-source commercial models. This was compared to ChipLingo-8B, which achieved 59.7% accuracy.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "61b99d04-fcf8-4e67-b910-30e8967e85cf"
+    ],
     "source_document": "2604.27415v1.pdf",
     "domain_tag": "academic"
   },
@@ -92,7 +111,9 @@
     "question_id": "gt_012",
     "question": "In 'Hands-On Python' by Dr. Andrew Harrington, what is covered in section 1.11 of Chapter 1?",
     "ground_truth_answer": "In 'Hands-On Python' by Dr. Andrew Harrington, Section 1.11 of Chapter 1 (titled 'Beginning With Python') covers 'Defining Functions of your Own'. This follows sections on Input/Output and Dictionaries.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "4852dd42-bdf2-4ebb-b9f5-74d8edd4f3d6"
+    ],
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -100,7 +121,9 @@
     "question_id": "gt_013",
     "question": "Which chapter in 'Hands-On Python' covers 'Dynamic Web Pages'?",
     "ground_truth_answer": "Chapter 4 of the 'Hands-On Python' tutorial is dedicated to 'Dynamic Web Pages'. It includes sub-sections on Web page Basics (4.1), Composing Web Pages in Python (4.2), and CGI - Dynamic Web Pages (4.3).",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "bc42a990-4e7d-438b-9dda-69e4bda6ee66"
+    ],
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -108,7 +131,9 @@
     "question_id": "gt_014",
     "question": "Which greenhouse gases are included in the FAOSTAT 'Emissions Totals' domain?",
     "ground_truth_answer": "The FAOSTAT 'Emissions Totals' domain includes methane (CH4), nitrous oxide (N2O), and carbon dioxide (CO2) emissions generated from agrifood systems and other economic sectors. It also encompasses aggregate fluorinated gases (F-gases) emissions used in industrial processes.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "f070788f-4268-4508-a349-4633d3ec6bf4"
+    ],
     "source_document": "FAO_EMSTOT.pdf",
     "domain_tag": "academic"
   },
@@ -116,7 +141,9 @@
     "question_id": "gt_015",
     "question": "What global warming potentials are used to compute CO2 equivalent units in the FAOSTAT emissions database?",
     "ground_truth_answer": "The FAOSTAT Emissions Totals domain computes CO2 equivalent (CO2eq) units using the global warming potentials (GWP) from the Intergovernmental Panel on Climate Change (IPCC) Fifth Assessment Report, known as AR5, released in 2014.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "f070788f-4268-4508-a349-4633d3ec6bf4"
+    ],
     "source_document": "FAO_EMSTOT.pdf",
     "domain_tag": "academic"
   },
@@ -124,7 +151,9 @@
     "question_id": "gt_016",
     "question": "What is the primary purpose of the CLEAR Water Dashboard?",
     "ground_truth_answer": "The primary purpose of the CLEAR Water Dashboard is to support Water teams in informing the standardized diagnostic framework for Climate and Economic Analyses of Resilience in Water (CLEAR Water) in Country Climate and Development Reports. It curates and assembles more than twenty global datasets from recognized institutions.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "4fd2fb9f-5fd8-43ca-91f2-b782ac43c4db"
+    ],
     "source_document": "WB_CLEAR.pdf",
     "domain_tag": "technical"
   },
@@ -132,7 +161,9 @@
     "question_id": "gt_017",
     "question": "When was the report for 'Climate and Economic Analyses for Resilience in Water' (CLEAR Water) generated?",
     "ground_truth_answer": "The report for the CLEAR Water database was generated on August 27, 2025. The database version is listed as 1.0, with a version date of April 16, 2025.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "c897d9ac-92fd-4184-bae7-73c195054201"
+    ],
     "source_document": "WB_CLEAR.pdf",
     "domain_tag": "technical"
   },
@@ -140,14 +171,16 @@
     "question_id": "gt_018",
     "question": "Which date marked the end of the sixth year of implementation of the World Bank's Access to Information Policy?",
     "ground_truth_answer": "June 30, 2016, marked the end of the sixth year of implementation of the World Bank's Access to Information (AI) Policy. This milestone reflects several years of progress in the Bank's transparency and accountability agenda.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "f4c647d6-149f-4ac3-b3b1-e35a881f5e16"
+    ],
     "source_document": "Access-to-Information-2016-annual-report.pdf",
     "domain_tag": "financial"
   },
   {
     "question_id": "gt_019",
     "question": "What is the function of 'World Bank Group Finances' as described in the FY2016 report?",
-    "ground_truth_answer": "As described in the FY2016 report, 'World Bank Group Finances' is a platform that makes data related to the WBG’s financials available to everyone in a social, interactive, visually compelling, and machine-readable format.",
+    "ground_truth_answer": "As described in the FY2016 report, 'World Bank Group Finances' is a platform that makes data related to the WBG\u00e2\u20ac\u2122s financials available to everyone in a social, interactive, visually compelling, and machine-readable format.",
     "ground_truth_chunk_ids": [],
     "source_document": "Access-to-Information-2016-annual-report.pdf",
     "domain_tag": "financial"
@@ -156,7 +189,9 @@
     "question_id": "gt_020",
     "question": "Who is the President of the World Bank Group listed in the 2025 Annual Report?",
     "ground_truth_answer": "Ajay Banga is listed as the President of the World Bank Group and Chairman of the Board of Executive Directors in the 2025 Annual Report. He submitted the report to the Board of Governors along with the administrative budgets and audited financial statements.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "328cac33-b539-48e6-9430-c902f0d61bd5"
+    ],
     "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
     "domain_tag": "financial"
   },
@@ -164,7 +199,9 @@
     "question_id": "gt_021",
     "question": "What period is covered by the World Bank Group Annual Report 2025?",
     "ground_truth_answer": "The World Bank Group Annual Report 2025 covers the period beginning on July 1, 2024, and ending on June 30, 2025. It includes results from IBRD, IDA, IFC, MIGA, and ICSID.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "3774ebce-5716-49df-849a-52804840c543"
+    ],
     "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
     "domain_tag": "financial"
   },
@@ -172,7 +209,9 @@
     "question_id": "gt_022",
     "question": "Which retrieval strategy achieved the weakest contextual precision in the BioASQ benchmarking study?",
     "ground_truth_answer": "In the biomedical RAG study, Multi-Query Expansion produced the weakest contextual precision (0.671). The study suggests that naive query diversification introduced retrieval noise, which negatively impacted the signal-to-noise ratio in the retrieved results.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "ea896fbc-5c23-49e7-a12e-5c30d1afbfd2"
+    ],
     "source_document": "2605.02520v1.pdf",
     "domain_tag": "academic"
   },
@@ -180,7 +219,9 @@
     "question_id": "gt_023",
     "question": "How many available development datasets, indicators, and visualizations were cited in the FY23 ATI report?",
     "ground_truth_answer": "The FY23 Access to Information report cited over 15,700 available development datasets, indicators, and visualizations. This is coordinated by the Development Data Group, which maintains numerous macro, financial, and sector databases.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "6dc33ff1-ffd5-44ba-bb87-c6ef34f3574f"
+    ],
     "source_document": "Access-to-Information-2023-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -188,7 +229,9 @@
     "question_id": "gt_024",
     "question": "Which section of the Python 3.7.0 tutorial discusses 'Coding Style'?",
     "ground_truth_answer": "Section 4.8 of the Python 3.7.0 tutorial is titled 'Intermezzo: Coding Style'. It provides guidance on maintaining a consistent and readable coding style, which is essential for collaborative Python development.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "3ecd858e-a872-494d-b96c-221687a43eb6"
+    ],
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -196,7 +239,9 @@
     "question_id": "gt_025",
     "question": "In the Python tutorial, what is the purpose of section 4.1 'if Statements'?",
     "ground_truth_answer": "Section 4.1 of the Python tutorial discusses 'if Statements', which are the primary control flow tool for conditional execution. They allow a program to execute a specific block of code only if a given condition is true, often followed by 'elif' and 'else' clauses.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "8badc404-4fc5-45c3-b15e-ef828e429529"
+    ],
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   }

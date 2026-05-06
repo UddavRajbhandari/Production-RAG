@@ -1,13 +1,13 @@
-
 import json
-import sys
 import os
+import sys
+
 
 def validate(path: str) -> None:
     if not os.path.exists(path):
         print(f"ERROR: File not found at {path}")
         sys.exit(1)
-        
+
     with open(path) as f:
         try:
             pairs = json.load(f)
@@ -31,13 +31,16 @@ def validate(path: str) -> None:
         if not pair.get("ground_truth_answer", "").strip():
             errors.append(f"{qid}: empty ground_truth_answer")
 
-        if pair.get("domain_tag") not in {"financial", "academic", "technical"}:
+        valid_tags = {"financial", "academic", "technical"}
+        if pair.get("domain_tag") not in valid_tags:
             errors.append(f"{qid}: invalid domain_tag '{pair.get('domain_tag')}'")
 
     # Track B check — only warn, not error, on empty chunk IDs
-    empty_chunks = [p["question_id"] for p in pairs if not p.get("ground_truth_chunk_ids")]
+    empty_chunks = [
+        p["question_id"] for p in pairs if not p.get("ground_truth_chunk_ids")
+    ]
     if empty_chunks:
-        print(f"WARNING: {len(empty_chunks)} pairs have no chunk IDs yet (expected in Track A).")
+        print(f"WARNING: {len(empty_chunks)} pairs have no chunk IDs yet.")
 
     if errors:
         print(f"VALIDATION FAILED — {len(errors)} error(s):")
@@ -45,9 +48,14 @@ def validate(path: str) -> None:
             print(f"  - {e}")
         sys.exit(1)
     else:
-        print(f"VALIDATION PASSED — {len(pairs)} pairs, {len(empty_chunks)} pending chunk IDs.")
+        print(
+            f"VALIDATION PASSED — {len(pairs)} pairs, " f"{len(empty_chunks)} pending."
+        )
+
 
 if __name__ == "__main__":
     # Ensure directory exists before running
-    target_path = sys.argv[1] if len(sys.argv) > 1 else "data/ground_truth/ground_truth.json"
+    target_path = (
+        sys.argv[1] if len(sys.argv) > 1 else "data/ground_truth/ground_truth.json"
+    )
     validate(target_path)

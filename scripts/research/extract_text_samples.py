@@ -1,8 +1,18 @@
+"""
+Text Sample Extraction Script
+Extracts first few pages of representative documents for manual inspection.
+Provides a quick view of document structure and text quality.
+"""
 
-import fitz
 import os
 
-def extract_sample(file_path, pages=[0, 1, 2]):
+import fitz
+
+
+def extract_sample(file_path: str, pages: list[int] | None = None) -> None:
+    """Extracts and prints text from specified pages of a PDF."""
+    if pages is None:
+        pages = [0, 1, 2]
     print(f"\n=== Sample from {os.path.basename(file_path)} ===")
     try:
         doc = fitz.open(file_path)
@@ -14,12 +24,15 @@ def extract_sample(file_path, pages=[0, 1, 2]):
     except Exception as e:
         print(f"Error: {e}")
 
-# Sample files
-samples = [
+
+# Sample files for verification
+samples: list[str] = [
     "data/raw/pdf/Access-to-Information-2023-annual-report.pdf",
     "data/raw/pdf/2605.02520v1.pdf",
-    "data/raw/pdf/Python-tutorial-pdf1.pdf"
+    "data/raw/pdf/Python-tutorial-pdf1.pdf",
 ]
 
-for s in samples:
-    extract_sample(s)
+if __name__ == "__main__":
+    for s in samples:
+        if os.path.exists(s):
+            extract_sample(s)

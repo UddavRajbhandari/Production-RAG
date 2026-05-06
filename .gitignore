@@ -48,48 +48,15 @@ Thumbs.db
 # =========================
 # Project-specific (RAG)
 # =========================
-
-# Vector DB (Qdrant local storage)
-qdrant_storage/
-qdrant_data/
+# Project-specific (RAG)
+storage/
+*.pkl
 *.db
 
-# Embeddings / cache files
-.cache/
-huggingface/
-.huggingface/
-transformers_cache/
-sentence_transformers/
-
-# LlamaIndex / LangChain caches
-storage/
-index_storage/
-persist/
-chroma_db/
-faiss_index/
-
-# Logs
-logs/
-*.log
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Model files (VERY IMPORTANT if you download local models)
-*.bin
-*.pt
-*.pth
-*.safetensors
-
-# Large dataset files (PDFs, DOCX, etc. if not tracking)
+# Data directories
 data/raw/
-datasets/
-raw_data/
-processed_data/
-*docx
-docs/img
+data/processed/
+data/metadata/
 
 # OS / Windows metadata
 desktop.ini
@@ -100,3 +67,8 @@ desktop.ini
 .dockerignore
 
 GEMINI.md
+*.docx
+
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
