@@ -98,3 +98,5 @@ desktop.ini
 # Docker (if used later)
 # =========================
 .dockerignore
+
+GEMINI.md
