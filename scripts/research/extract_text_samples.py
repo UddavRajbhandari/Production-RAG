@@ -18,7 +18,7 @@ def extract_sample(file_path: str, pages: list[int] | None = None) -> None:
         doc = fitz.open(file_path)
         for p in pages:
             if p < len(doc):
-                print(f"--- Page {p+1} ---")
+                print(f"--- Page {p + 1} ---")
                 print(doc[p].get_text())
         doc.close()
     except Exception as e:

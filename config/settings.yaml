@@ -5,16 +5,41 @@
 # Reference this file via: config = yaml.safe_load(open("config/settings.yaml"))
 
 ingestion:
-  chunk_size: 512              # Structure-aware chunk size (tokens)
-  chunk_overlap: 50            # Overlap between adjacent chunks
-  min_char_threshold: 100      # Filter for low-text pages (audit finding #1)
-  window_size: 3               # SentenceWindowNodeParser context size
-  table_extraction: true       # Enable unstructured table-to-markdown parsing
+  chunk_size: 512 # Structure-aware chunk size (tokens)
+  chunk_overlap: 50 # Overlap between adjacent chunks
+  min_char_threshold: 100 # Filter for low-text pages (audit finding #1)
+  window_size: 3 # SentenceWindowNodeParser context size
+  table_extraction: true # Enable unstructured table-to-markdown parsing
+
+  # Maps filename prefixes → department labels for relational filtering.
+  # Add one entry per domain group in your corpus.
+  department_mapping:
+    worldbank: "Financial"
+    world-bank-access-to-information: "Financial"
+    wbg-a2i: "Financial"
+    ati-annual-report: "Financial"
+    access-to-i: "Financial"
+    imf: "Financial"
+    annual-report: "Financial"
+    budget: "Financial"
+    fiscal: "Financial"
+    "2508.": "Academic"
+    "2604.": "Academic"
+    "2605.": "Academic"
+    arxiv: "Academic"
+    paper: "Academic"
+    research: "Academic"
+    fao_: "Academic"
+    chipfabric: "Technical"
+    deepeval: "Technical"
+    chiplingo: "Technical"
+    python: "Technical"
+    wb_clear: "Technical"
 
 storage:
   qdrant:
     collection_name: "production_rag_v1"
-    vector_size: 384           # all-MiniLM-L6-v2 output dimension
+    vector_size: 384 # all-MiniLM-L6-v2 output dimension
     distance: "Cosine"
     host: "localhost"
     port: 6333
@@ -28,16 +53,17 @@ storage:
 retrieval:
   dense_top_k: 20
   sparse_top_k: 20
-  rrf_k: 60                    # Reciprocal Rank Fusion constant (k=60 standard default)
-  rerank_top_n: 5              # Candidates passed to cross-encoder after RRF
+  rrf_k: 60 # Reciprocal Rank Fusion constant (k=60 standard default)
+  rerank_top_n: 5 # Candidates passed to cross-encoder after RRF
+  rerank_pool_size: 15 # Candidates passed from RRF to the reranker
 
 latency:
   # Sub-budgets must sum to ≤ total_p95_ms.
   # Profile on target hardware (htop / free -h on clean boot first).
   total_p95_ms: 280
-  retrieval_budget_ms: 120     # Qdrant dense + BM25 sparse + RRF
-  rerank_budget_ms: 80         # Local cross-encoder (CPU) — measure this first
-  generation_budget_ms: 80     # Quantized LLM inference via Ollama/llama.cpp
+  retrieval_budget_ms: 120 # Qdrant dense + BM25 sparse + RRF
+  rerank_budget_ms: 80 # Local cross-encoder (CPU) — measure this first
+  generation_budget_ms: 80 # Quantized LLM inference via Ollama/llama.cpp
   # WARNING: rerank_budget_ms for a local cross-encoder on CPU is environment-
   # dependent. Run scripts/profile_latency.py before committing to these values.
 
@@ -57,10 +83,10 @@ evaluation:
   ragas:
     # CI regression thresholds — ragas_regression.py reads these directly.
     # If scores fall below these in CI, the pipeline fails.
-    alert_threshold_cp: 0.75        # Context Precision floor
-    alert_threshold_faith: 0.80     # Faithfulness floor
-    alert_threshold_ar: 0.75        # Answer Relevancy floor
-    alert_threshold_cr: 0.75        # Context Recall floor
+    alert_threshold_cp: 0.75 # Context Precision floor
+    alert_threshold_faith: 0.80 # Faithfulness floor
+    alert_threshold_ar: 0.75 # Answer Relevancy floor
+    alert_threshold_cr: 0.75 # Context Recall floor
 
     # Production monitoring — sample 5% of queries weekly.
     # If CP drops below reindex_trigger_cp, trigger re-indexing review.
@@ -69,12 +95,12 @@ evaluation:
 
   ground_truth:
     path: "data/ground_truth/ground_truth.json"
-    golden_set_ci: "data/ground_truth/golden_set_ci.json"  # small fast subset for CI
-    min_pairs: 50                    # Phase 6 will not start until this is met
+    golden_set_ci: "data/ground_truth/golden_set_ci.json" # small fast subset for CI
+    min_pairs: 50 # Phase 6 will not start until this is met
 
 logging:
   level: "INFO"
-  format: "json"                     # Structured JSON logs — never plain print()
+  format: "json" # Structured JSON logs — never plain print()
   per_query_fields:
     - retrieval_latency_ms
     - rerank_latency_ms

@@ -52,8 +52,6 @@ module = [
     "qdrant_client.*",
     "llama_index.*",
     "langchain.*",
-    "langgraph.*",
-    "ragas.*",
     "sentence_transformers.*",
     "rank_bm25.*",
     "unstructured.*",
@@ -62,6 +60,13 @@ module = [
     "openpyxl.*",
     "sqlalchemy.*",
     "yaml.*",
+    "optimum.*",
+    "transformers.*",
+    "tiktoken.*",
+    "fitz.*",
+    "pymupdf.*",
+    "pytest.*",
+    "torch.*",
 ]
 ignore_missing_imports = true
 

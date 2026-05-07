@@ -18,7 +18,7 @@ def read_pages(file_path: str, pages: list[int]) -> None:
             doc = fitz.open(file_path)
             for p in pages:
                 if p < len(doc):
-                    print(f"PAGE {p+1}:")
+                    print(f"PAGE {p + 1}:")
                     print(doc[p].get_text())
             doc.close()
         elif file_path.endswith(".docx"):

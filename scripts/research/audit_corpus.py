@@ -21,12 +21,13 @@ def audit_pdf(file_path: str) -> None:
             text = page.get_text()
             tables = page.find_tables()
             print(
-                f"Page {i+1}: {len(text)} chars, "
+                f"Page {i + 1}: {len(text)} chars, "
                 f"{len(tables.tables)} potential tables detected"
             )
             if len(text) < 100:
                 print(
-                    f"  [!] Warning: Very low text on page {i+1} (Possible image-only?)"
+                    f"  [!] Warning: Very low text on page {i + 1} "
+                    "(Possible image-only?)"
                 )
         doc.close()
     except Exception as e:

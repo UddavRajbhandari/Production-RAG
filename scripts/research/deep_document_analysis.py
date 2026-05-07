@@ -12,9 +12,9 @@ import fitz
 
 def analyze_document(file_path: str) -> None:
     """Extracts first 5 pages/blocks of a document for deep reading."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"ANALYZING: {os.path.basename(file_path)}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     try:
         if file_path.endswith(".pdf"):
             doc = fitz.open(file_path)

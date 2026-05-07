@@ -5,16 +5,20 @@ Combines dense and sparse results using Reciprocal Rank Fusion (RRF).
 """
 
 import concurrent.futures
+import logging
 import re
 from typing import Any
 
 import yaml
 from llama_index.core.schema import TextNode
 from qdrant_client.http import models
+from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
 
 from src.storage.bm25_index import BM25Storage
 from src.storage.qdrant_client import QdrantStorage
+
+logger = logging.getLogger(__name__)
 
 
 class HybridRetriever:
@@ -34,8 +38,7 @@ class HybridRetriever:
         self.dense_k = self.config["retrieval"]["dense_top_k"]
         self.sparse_k = self.config["retrieval"]["sparse_top_k"]
         self.rrf_k = self.config["retrieval"]["rrf_k"]
-        # Limit candidates for reranking to improve speed (Balance: Speed + Accuracy)
-        self.rerank_pool_size = 15
+        self.rerank_pool_size = self.config["retrieval"]["rerank_pool_size"]
 
     def search(self, query: str) -> list[dict[str, Any]]:
         """
@@ -63,29 +66,34 @@ class HybridRetriever:
         self, nodes: list[dict[str, Any]], window_size: int = 1
     ) -> list[dict[str, Any]]:
         """
-        Accuracy Optimization: Fetches surrounding chunks to enrich context.
-        Uses chunk_index and source_file for precise lookup.
+        Returns a new list of result dicts enriched with surrounding chunk text.
         """
-        expanded_nodes = []
-        node_lookup = {
+        node_lookup: dict[tuple[str, int], TextNode] = {
             (n.metadata["source_file"], n.metadata["chunk_index"]): n
             for n in self.bm25.nodes
         }
+        expanded: list[dict[str, Any]] = []
 
         for node_dict in nodes:
-            source = node_dict["metadata"]["source_file"]
-            idx = node_dict["metadata"]["chunk_index"]
+            source = node_dict["metadata"].get("source_file", "")
+            idx = node_dict["metadata"].get("chunk_index", 0)
 
-            context_text = []
-            # Fetch preceding, current, and succeeding
+            context_parts: list[str] = []
             for i in range(idx - window_size, idx + window_size + 1):
-                if (source, i) in node_lookup:
-                    context_text.append(node_lookup[(source, i)].text)
+                neighbour = node_lookup.get((source, i))
+                if neighbour is not None:
+                    context_parts.append(neighbour.text)
+                elif i != idx:
+                    logger.debug(
+                        "expand_context: chunk (%s, %d) not found — boundary chunk.",
+                        source,
+                        i,
+                    )
 
-            node_dict["expanded_text"] = "\n\n".join(context_text)
-            expanded_nodes.append(node_dict)
+            enriched = {**node_dict, "expanded_text": "\n\n".join(context_parts)}
+            expanded.append(enriched)
 
-        return expanded_nodes
+        return expanded
 
     def _extract_year_filter(self, query: str) -> str | None:
         """Extracts years like 2023 or FY23 from the query."""
@@ -119,33 +127,36 @@ class HybridRetriever:
     def _sparse_search(
         self, query: str, year_filter: str | None = None
     ) -> list[TextNode]:
-        """Keyword search against BM25 index with node pre-filtering."""
+        """Keyword search against BM25 with optional year pre-filtering."""
         if year_filter:
             filtered_nodes = [
                 n for n in self.bm25.nodes if n.metadata.get("date") == year_filter
             ]
-            if not filtered_nodes:  # Fallback to all nodes if filter returns zero
+            if not filtered_nodes:
+                logger.warning(
+                    "Year filter '%s' matched 0 nodes — falling back to full index.",
+                    year_filter,
+                )
                 return self.bm25.search(query, top_k=self.sparse_k)
 
-            # Re-index only filtered nodes for maximum accuracy
             tokenized_corpus = [node.text.lower().split() for node in filtered_nodes]
-            from rank_bm25 import BM25Okapi
-
             temp_bm25 = BM25Okapi(tokenized_corpus)
-
             tokenized_query = query.lower().split()
-            scores = temp_bm25.get_scores(tokenized_query)
-            top_n = sorted(
-                range(len(scores)), key=lambda i: float(scores[i]), reverse=True
-            )[: self.sparse_k]
-            return [filtered_nodes[i] for i in top_n]
+            raw_scores = temp_bm25.get_scores(tokenized_query)
+            scored = [
+                (i, float(raw_scores[i]))
+                for i in range(len(raw_scores))
+                if float(raw_scores[i]) > 0.0
+            ]
+            scored.sort(key=lambda x: x[1], reverse=True)
+            return [filtered_nodes[i] for i, _ in scored[: self.sparse_k]]
 
         return self.bm25.search(query, top_k=self.sparse_k)
 
     def _reciprocal_rank_fusion(
         self, dense_hits: list[Any], sparse_nodes: list[TextNode]
     ) -> list[dict[str, Any]]:
-        """Merges disparate result lists into a single ranked list using RRF formula."""
+        """Merges dense and sparse results using Reciprocal Rank Fusion."""
         scores: dict[str, float] = {}
 
         for rank, hit in enumerate(dense_hits):
@@ -156,22 +167,41 @@ class HybridRetriever:
             node_id = str(node.id_)
             scores[node_id] = scores.get(node_id, 0.0) + 1.0 / (self.rrf_k + rank + 1)
 
-        # Sort by score
         sorted_ids = sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
-        node_lookup = {node.id_: node for node in self.bm25.nodes}
+        bm25_lookup: dict[str, TextNode] = {node.id_: node for node in self.bm25.nodes}
+        qdrant_lookup: dict[str, Any] = {str(hit.id): hit for hit in dense_hits}
 
-        final_results = []
+        final_results: list[dict[str, Any]] = []
         for node_id, rrf_score in sorted_ids:
-            if node_id in node_lookup:
-                node = node_lookup[node_id]
+            if node_id in bm25_lookup:
+                node = bm25_lookup[node_id]
                 final_results.append(
                     {
                         "id": node_id,
                         "text": node.text,
                         "metadata": node.metadata,
                         "rrf_score": rrf_score,
+                        "source": "hybrid",
                     }
+                )
+            elif node_id in qdrant_lookup:
+                hit = qdrant_lookup[node_id]
+                payload = dict(hit.payload or {})
+                text = payload.pop("text", "")
+                final_results.append(
+                    {
+                        "id": node_id,
+                        "text": text,
+                        "metadata": payload,
+                        "rrf_score": rrf_score,
+                        "source": "dense_only",
+                    }
+                )
+            else:
+                logger.warning(
+                    "Node ID %s has an RRF score but was not found in any lookup.",
+                    node_id,
                 )
 
         return final_results

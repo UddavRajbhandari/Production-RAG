@@ -48,9 +48,7 @@ def validate(path: str) -> None:
             print(f"  - {e}")
         sys.exit(1)
     else:
-        print(
-            f"VALIDATION PASSED — {len(pairs)} pairs, " f"{len(empty_chunks)} pending."
-        )
+        print(f"VALIDATION PASSED — {len(pairs)} pairs, {len(empty_chunks)} pending.")
 
 
 if __name__ == "__main__":

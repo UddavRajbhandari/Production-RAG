@@ -72,3 +72,8 @@ GEMINI.md
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+docs/phase1to3/Phase_1_to_3_Technical_Report.md
+docs/phase1to3/Phase1_fix_guide.md
+docs/phase1to3/Phase2_fix_guide.md
+docs/phase1to3/Phase3_fix_guide.md
+docs/LOCAL_CI_WORKFLOW.md
