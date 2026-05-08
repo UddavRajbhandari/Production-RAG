@@ -58,14 +58,12 @@ retrieval:
   rerank_pool_size: 15 # Candidates passed from RRF to the reranker
 
 latency:
-  # Sub-budgets must sum to ≤ total_p95_ms.
-  # Profile on target hardware (htop / free -h on clean boot first).
-  total_p95_ms: 280
-  retrieval_budget_ms: 120 # Qdrant dense + BM25 sparse + RRF
-  rerank_budget_ms: 80 # Local cross-encoder (CPU) — measure this first
-  generation_budget_ms: 80 # Quantized LLM inference via Ollama/llama.cpp
-  # WARNING: rerank_budget_ms for a local cross-encoder on CPU is environment-
-  # dependent. Run scripts/profile_latency.py before committing to these values.
+  # Sub-budgets revised May 2026 based on local CPU profiling (Llama-3 8B).
+  # 8B model takes ~11s for short tasks and ~80s for reasoning on local CPU.
+  total_p95_ms: 180000 # 3-minute budget for multi-node agent logic
+  retrieval_budget_ms: 500
+  rerank_budget_ms: 2000
+  generation_budget_ms: 150000 # Accommodates 3 sequential LLM calls (Planner/Agent/Validator)
 
 models:
   embedding: "sentence-transformers/all-MiniLM-L6-v2"

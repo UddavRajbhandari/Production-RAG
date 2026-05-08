@@ -67,6 +67,7 @@ module = [
     "pymupdf.*",
     "pytest.*",
     "torch.*",
+    "requests.*",
 ]
 ignore_missing_imports = true
 

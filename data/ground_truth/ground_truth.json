@@ -181,7 +181,9 @@
     "question_id": "gt_019",
     "question": "What is the function of 'World Bank Group Finances' as described in the FY2016 report?",
     "ground_truth_answer": "As described in the FY2016 report, 'World Bank Group Finances' is a platform that makes data related to the WBG\u00e2\u20ac\u2122s financials available to everyone in a social, interactive, visually compelling, and machine-readable format.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": [
+      "2fb5fc14-7dd1-4ce2-a8e8-a8fd8fa69b79"
+    ],
     "source_document": "Access-to-Information-2016-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -243,6 +245,436 @@
       "8badc404-4fc5-45c3-b15e-ef828e429529"
     ],
     "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_026",
+    "question": "What is the main reason why the African Development Bank approves historic health infrastructure strategy in February 2022?",
+    "ground_truth_answer": "The ADB approved a historic health infrastructure strategy to improve healthcare outcomes and address the growing needs of Africa's population. The strategy aimed to provide comprehensive health services, strengthen health systems, and increase access to healthcare facilities.",
+    "ground_truth_chunk_ids": [
+      "59fe2b04-c775-4137-bfb4-3d6a26e2380c"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_027",
+    "question": "The Bank's decision to restrict access to the Grant Agreement and GFRs is based on the likelihood of harm resulting from disclosure.",
+    "ground_truth_answer": "the bank decided to exercise its prerogative to restrict access. the likelihood of harm resulting from disclosure was high",
+    "ground_truth_chunk_ids": [
+      "1dc3b02d-a5ac-43d2-842e-3eff067d5ba1"
+    ],
+    "source_document": "AtI-annual-report-2012.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_028",
+    "question": "Can a standard that requires high certification for providers yield better health outcomes in aggregate than using highly trained professionals?",
+    "ground_truth_answer": "Yes, expanding access to healthcare for the many using providers with less advanced credentials can lead to better health outcomes in the aggregate.",
+    "ground_truth_chunk_ids": [
+      "cf83b98e-64bb-4f61-8513-b2726a71abb5"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_029",
+    "question": "What is the specific context of government intervention in quality infrastructure changes with conformity assessment services?",
+    "ground_truth_answer": "Need for government intervention in quality infrastructure changes with conformity assessment services is a growing concern due to increasing regulatory requirements and changing global market demands. As countries develop their quality infrastructure, the need for government intervention is becoming more apparent.",
+    "ground_truth_chunk_ids": [
+      "763ae696-16b2-4ead-bdc5-36ea64ce6810"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_030",
+    "question": "What does the function s.count(sub) return?",
+    "ground_truth_answer": "The function s.count(sub) returns the number of repetitions of the substring sub inside string s.",
+    "ground_truth_chunk_ids": [
+      "2f1f90a6-d027-4ea2-8f96-d7814764504a"
+    ],
+    "source_document": "Python-tutorial-pdf2.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_031",
+    "question": "What is the main goal of the World Bank's Small States strategy?",
+    "ground_truth_answer": "To support inclusive and resilient growth in small countries through innovative financing solutions and effective management.",
+    "ground_truth_chunk_ids": [
+      "c0f2fb65-1b10-465d-9386-7e2cf8c70f9f"
+    ],
+    "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_032",
+    "question": "Can you identify the captions associated with the images, tables, and forms in a poorly structured PDF document?",
+    "ground_truth_answer": "['Image caption', 'Table header', 'Form description']",
+    "ground_truth_chunk_ids": [
+      "6bcf6d0a-4b2a-4b90-8b74-d5cabb5c2be0"
+    ],
+    "source_document": "2604.23276v1.pdf",
+    "domain_tag": "academic"
+  },
+  {
+    "question_id": "gt_033",
+    "question": "What specific unit within The World Bank handled 16 cases carried over from FY 2011 and 87 cases carried over from FY 2012 in FY 2013?",
+    "ground_truth_answer": "InfoShop (ECR) and communications staff in COs.",
+    "ground_truth_chunk_ids": [
+      "790879b2-0b5c-4298-939e-a27b75542945"
+    ],
+    "source_document": "AtI-annual-report-2013.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_034",
+    "question": "How does Python's `insert` method work?",
+    "ground_truth_answer": "When you use the `insert` method, a new element is added to the end of the list. The specified index becomes valid again.",
+    "ground_truth_chunk_ids": [
+      "09b9d9ba-739a-45fe-8650-daf5db66d89b"
+    ],
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_035",
+    "question": "What type of data structure does the collections module use?",
+    "ground_truth_answer": "It uses a deque object that is like a list with faster appends and pops from the left side but slower lookups in the middle. These objects are well suited for implementing queues and breadth \ufb01rst tree searches: 11.6.",
+    "ground_truth_chunk_ids": [
+      "d175cf68-188f-4cf0-adb8-eb4e484d1641"
+    ],
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_036",
+    "question": "What are the age ranges of the children participating in the Center of aesthetic education (aesthetic, artistic, choreographic, academic vocal)?",
+    "ground_truth_answer": "The center engages 234 children aged from 3 to 17 years old.",
+    "ground_truth_chunk_ids": [
+      "a563ffff-9882-4e21-8701-f59ae0e4515a"
+    ],
+    "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_037",
+    "question": "What is the result of the following delete operation?",
+    "ground_truth_answer": "The list remains unchanged after a deletion operation.",
+    "ground_truth_chunk_ids": [
+      "2a095963-6a77-42c5-9aa1-305682069d9b"
+    ],
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_038",
+    "question": "What software do I use to create static web pages?",
+    "ground_truth_answer": "Kompozer",
+    "ground_truth_chunk_ids": [
+      "2fa23228-9c4e-423d-9360-52be67acf8e0"
+    ],
+    "source_document": "Python-tutorial-pdf2.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_039",
+    "question": "What is the name of the study that investigated mortality rates in low-quality health systems during the Universal Health Coverage era?",
+    "ground_truth_answer": "Mortality Due to Low-Quality Health Systems in the Universal Health Coverage Era: A Systematic Analysis of Amenable Deaths in 137 Countries.",
+    "ground_truth_chunk_ids": [
+      "2bd37f84-3d33-4ebd-92ce-e12d361a4932"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_040",
+    "question": "What are the most widely accepted standards for managing risks in metrology?",
+    "ground_truth_answer": "The International Organization for Standardization (ISO) and the International Electrotechnical Commission (IEC) have developed several frameworks and guidelines to help organizations manage risks in metrology. For example, ISO/IEC 17025:2018 provides a framework for managing risks associated with laboratory testing and calibration.",
+    "ground_truth_chunk_ids": [
+      "f3988696-47c1-479f-9290-f256cc90b7bb"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_041",
+    "question": "What is the relationship between climate-related standards and disaster costs among higher-income countries compared to lower-income countries?",
+    "ground_truth_answer": "The number of climate-related standards has grown in higher-income countries, and disaster costs have affected that number more than in lower-income countries. In particular, higher-income countries tend to have a larger share of climate-related standards in their energy sectors due to the importance of carbon pricing and regulatory frameworks.",
+    "ground_truth_chunk_ids": [
+      "d9bd50a4-87af-4910-b0e1-9674176679b1"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_042",
+    "question": "What does the installer do after it finishes copying files?",
+    "ground_truth_answer": "After the installer finishes copying files, click Close to close the installer window.",
+    "ground_truth_chunk_ids": [
+      "d45bff83-6955-422f-b5cd-2f1bb88d3fcd"
+    ],
+    "source_document": "Python-tutorial-pdf3.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_043",
+    "question": "How can open budgets support international development aid transparency initiatives?",
+    "ground_truth_answer": "To help them become more open, supporting initiatives in areas such as open budgets and open contracting. In addition, we partner with countries in implementing international development aid transparency initiatives. Governments can use open aid data to integrate aid resources into their national budgets, and to better coordinate donor interventions within their borders.",
+    "ground_truth_chunk_ids": [
+      "0dbefa32-875a-43ac-9ca5-b9b37b34d54e"
+    ],
+    "source_document": "AtI-annual-report-2013.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_044",
+    "question": "How can regulations be designed to increase quality at the aggregate level while reducing negative externalities in production processes?",
+    "ground_truth_answer": "Regulations should be rigorous assessments of regulatory impact, which involves analyzing the trade-offs involved and identifying areas for improvement. This can be achieved through technical assistance and capacity-building support for developing countries.",
+    "ground_truth_chunk_ids": [
+      "402280c6-826a-4e53-ab96-0a88b9e9dd6b"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_045",
+    "question": "What are the financial resources available to The World Bank through its development programs?",
+    "ground_truth_answer": "The World Bank provides a variety of financial resources, including loans and grants, to support its development programs. These resources can be used to finance infrastructure projects, such as roads and bridges, or to support economic growth and poverty reduction initiatives. Additionally, the World Bank offers technical assistance and capacity-building programs to help recipient countries build their own financial management capacity.",
+    "ground_truth_chunk_ids": [
+      "bc685d47-da5c-4c45-bced-dd0cf272fc25"
+    ],
+    "source_document": "AtI-annual-report-2013.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_046",
+    "question": "What pages were used in a study on cultural bias in large language models?",
+    "ground_truth_answer": "Having beer after prayer? measuring cultural bias in large language models. Curran Associates, Inc.. Tarek Naous, Michael J Ryan, Alan Ritter, and Wei Xu. 2024",
+    "ground_truth_chunk_ids": [
+      "d6093992-fedb-42f0-9bd3-16659da189c3"
+    ],
+    "source_document": "2605.02601v1.pdf",
+    "domain_tag": "academic"
+  },
+  {
+    "question_id": "gt_047",
+    "question": "What is the purpose of the Windows-1252 encoding declaration in Python 3.7.0 source code?",
+    "ground_truth_answer": "To specify the character encoding used in the file, making it compatible with different operating systems.",
+    "ground_truth_chunk_ids": [
+      "f6e4aaeb-20c8-426c-a125-d926fd1b4975"
+    ],
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_048",
+    "question": "What percentage of requests from Europe and Central Asia were directed towards regional information?",
+    "ground_truth_answer": "31%",
+    "ground_truth_chunk_ids": [
+      "8f370a4d-e33d-46b6-96cc-ccb53cf399b1"
+    ],
+    "source_document": "AtI-annual-report-2013.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_049",
+    "question": "What are the key goals and objectives of the Charities SORP Committee?",
+    "ground_truth_answer": "The primary goal of the committee is to promote transparency and accountability in the charitable sector, ensuring that donations are used effectively for the benefit of the public. The committee's objectives include reviewing and revising existing regulations, establishing new ones, and providing guidance on best practices for charities.",
+    "ground_truth_chunk_ids": [
+      "01d93807-e6cc-453d-b999-045a4c7cf0d8"
+    ],
+    "source_document": "ce82ee69892b64d25e45e3f2e0968fb1e7aa9e43c6c01e03832b4d64ee812906.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_050",
+    "question": "What are the regulations that developed countries have in place due to their exports, specifically those related to nature?",
+    "ground_truth_answer": "regulations: Export regulations vary by country, but developed nations often have strict rules for importing food and feed into the EU and US markets. These regulations can include requirements for labeling, testing, and certification of products., countries: The UK, Germany, and France are among the countries with well-established export regulations. Other countries, such as the US and Canada, also have regulations in place but may be more flexible than their European counterparts., nature: The nature of these exports can impact the quality and safety of products, making it essential to comply with regulations., exports:",
+    "ground_truth_chunk_ids": [
+      "8388909c-5aa2-4d73-98ee-ad9e588b2c9b"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_051",
+    "question": "What type of finders are used in Python?",
+    "ground_truth_answer": "Two types: meta path finders and path entry finders.",
+    "ground_truth_chunk_ids": [
+      "9ec3540d-ca79-4603-b002-0800fa8ab88d"
+    ],
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_052",
+    "question": "What is the purpose of the Digital Vault in the Bank's operations?",
+    "ground_truth_answer": "The Digital Vault is a system to manage and preserve the Bank\u2019s digital assets, ensuring security, integrity, and accessibility.",
+    "ground_truth_chunk_ids": [
+      "58357f26-45b3-405f-bb62-7403072f7a8a"
+    ],
+    "source_document": "WBG-A2I-2019-annual-report.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_053",
+    "question": "What is the optimal number of standards for global fisheries sustainability?",
+    "ground_truth_answer": "Determining the right number of standards is a complex issue that depends on various factors, including the type of standard, its complexity, and the level of international cooperation. While some standards may be beneficial in promoting sustainability, others may not contribute significantly to improved performance. For instance, voluntary standards like those for food safety or labor standards can be effective in different contexts, but their impact may vary depending on the specific industry or region. On the other hand, rigid sustainability regulations might be more effective in certain sectors, such as technology, where speed and innovation are crucial. However, excessive fragmentation can lead to confusion among consumers and create challenges for regulatory frameworks.",
+    "ground_truth_chunk_ids": [
+      "23e8f8b2-e60e-47a7-81e8-d4ba46d1638d"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_054",
+    "question": "What is the impact on nonprogram farmers' earnings compared to those who adopt standards?",
+    "ground_truth_answer": "A negative impact was found, with studies indicating that nonstatistically significant impacts were observed in firms using an economic framework.",
+    "ground_truth_chunk_ids": [
+      "e7881fa9-b8be-43b9-a3e3-ad5bb44c8198"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_055",
+    "question": "What is the main purpose of the Federal Migraton Service (U.F.M.S.) - 1199 services?",
+    "ground_truth_answer": "The primary goal of the U.S. Citizenship and Immigration Services (USCIS) office within the Federatl Migraton Service is to facilitate the naturalization and citizenship process for eligible individuals who meet specific requirements.",
+    "ground_truth_chunk_ids": [
+      "b20ebe20-2e17-49b5-9eac-7a8ff169768d"
+    ],
+    "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_056",
+    "question": "What was the significance of China's accession to the World Trade Organization in 2001?",
+    "ground_truth_answer": "China's accession to the WTO marked a turning point and accelerated its economic transformation, shifting the country from alignment toward active participation in standards development and indigenous innovation, with centralization of functions providing stronger governance.",
+    "ground_truth_chunk_ids": [
+      "73d1be9e-e053-4d14-b4f9-4572c3572e96"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_057",
+    "question": "What is the purpose of the call in this context?",
+    "ground_truth_answer": "The purpose of the call is to initiate a specific task or operation within the system, such as sending an email or performing a file transfer.",
+    "ground_truth_chunk_ids": [
+      "b5600867-d13b-4f5b-b753-17bb6153230a"
+    ],
+    "source_document": "b987f9cad39adc500b43782f66e2fbf521e90ec510d6a3825100f9b6658bcf0f.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_058",
+    "question": "What is the 'Information Provided by Member Countries or Third Parties in Confidence' exception under the AI Policy?",
+    "ground_truth_answer": "The 'Information Provided by Member Countries or Third Parties in Confidence' exception recognizes that the Bank has an obligation to provide access to information listed in paragraphs 8-17 of the AI Policy, which set out the exceptions. In this specific case, the bank had denied access to the ERPA due to this exception.",
+    "ground_truth_chunk_ids": [
+      "50068762-7d96-4bbf-9f6f-e00657190e80"
+    ],
+    "source_document": "AtI-annual-report-2013.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_059",
+    "question": "What is the primary objective of the organization's approach to cultural and youth policy?",
+    "ground_truth_answer": "The main goal is to promote a healthy lifestyle among the population by organizing culturally-themed events, encouraging physical culture activities in urban areas, and implementing young policies.",
+    "ground_truth_chunk_ids": [
+      "97f8fe48-7846-4e2c-987d-1b21ff99a914"
+    ],
+    "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_060",
+    "question": "What is the primary purpose of the graphics package in Tkinter?",
+    "ground_truth_answer": "The graphics package is built on an underlying graphics system, Tkinter, which provides a foundation for creating graphical user interfaces and visual displays.",
+    "ground_truth_chunk_ids": [
+      "0c098524-c35e-46e9-8ed5-374a830cdb87"
+    ],
+    "source_document": "Python-tutorial-pdf2.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_061",
+    "question": "What is the role of ICSID in facilitating investment dispute settlement?",
+    "ground_truth_answer": "ICSID plays a leading global forum for resolving disputes between investors and States, providing technical assistance to State representatives and investors on important aspects to include in investment contracts.",
+    "ground_truth_chunk_ids": [
+      "87f596b1-ee60-410c-8848-bd101ca5af36"
+    ],
+    "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_062",
+    "question": "What industry is led by Herbert Hoover and issued Waste in Industry reports?",
+    "ground_truth_answer": "Waste in Industry",
+    "ground_truth_chunk_ids": [
+      "70b052f0-ec5b-4729-90e3-9991673124ea"
+    ],
+    "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_063",
+    "question": "What is the meaning of this string?",
+    "ground_truth_answer": "The string represents a formatted multi-line string with syntax highlighting enabled.",
+    "ground_truth_chunk_ids": [
+      "f21a7d3b-c1ed-4588-bba4-747a6da87a48"
+    ],
+    "source_document": "Python-tutorial-pdf2.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_064",
+    "question": "What is the main budgetary policy for managing foreign investment in Russia?",
+    "ground_truth_answer": "The Russian government has implemented a range of measures to attract foreign investment, including reducing taxes and regulations, increasing the availability of state-owned assets, and creating a favorable business environment. These efforts aim to promote economic growth, reduce dependence on domestic resources, and increase competitiveness in the global market.",
+    "ground_truth_chunk_ids": [
+      "47543771-9327-4619-b0aa-5c57c38b2dac"
+    ],
+    "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_065",
+    "question": "What is the syntax for using a file-like object in Python?",
+    "ground_truth_answer": "The syntax for using a file-like object in Python is `open()` function. The `open()` function returns a file object which can be used to read and write files.",
+    "ground_truth_chunk_ids": [
+      "8a4c1dfc-e8ac-436d-924f-9c25c2d20451"
+    ],
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_066",
+    "question": "what integer division problem does quotient.py print?",
+    "ground_truth_answer": "The quotient of 14 and 3 is 4 with a remainder of 2.",
+    "ground_truth_chunk_ids": [
+      "67f023b4-587e-425a-92e4-434e68a03918"
+    ],
+    "source_document": "Python-tutorial-pdf2.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_067",
+    "question": "What percentage of the workforce in manufacturing earns an income that is higher than $1,023 per year",
+    "ground_truth_answer": "$1,023 is the average annual salary for a production worker",
+    "ground_truth_chunk_ids": [
+      "db8b1031-a825-4c3d-b535-e58ce3986432"
+    ],
+    "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_068",
+    "question": "How to animate elementary graphics objects like faces in Python?",
+    "ground_truth_answer": "animate elementary graphics objects like faces in Python. Move all shapes in shapeList by (dx, dy).",
+    "ground_truth_chunk_ids": [
+      "ac9069a2-a08c-407b-b206-2fad5a5c237e"
+    ],
+    "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   }
 ]
