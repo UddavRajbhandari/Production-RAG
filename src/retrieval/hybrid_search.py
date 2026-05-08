@@ -40,6 +40,9 @@ class HybridRetriever:
         self.rrf_k = self.config["retrieval"]["rrf_k"]
         self.rerank_pool_size = self.config["retrieval"]["rerank_pool_size"]
 
+        # Speed Optimization: Persistent thread pool to avoid spawn overhead
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
     def search(self, query: str) -> list[dict[str, Any]]:
         """
         Executes parallel dense and sparse searches.
@@ -48,13 +51,12 @@ class HybridRetriever:
         # Accuracy Optimization: Metadata Filter Extraction
         year_filter = self._extract_year_filter(query)
 
-        # Speed Optimization: Parallel Retrieval
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            dense_future = executor.submit(self._dense_search, query, year_filter)
-            sparse_future = executor.submit(self._sparse_search, query, year_filter)
+        # Speed Optimization: Parallel Retrieval using persistent executor
+        dense_future = self._executor.submit(self._dense_search, query, year_filter)
+        sparse_future = self._executor.submit(self._sparse_search, query, year_filter)
 
-            dense_results = dense_future.result()
-            sparse_results = sparse_future.result()
+        dense_results = dense_future.result()
+        sparse_results = sparse_future.result()
 
         # 3. Reciprocal Rank Fusion (RRF)
         fused_results = self._reciprocal_rank_fusion(dense_results, sparse_results)
