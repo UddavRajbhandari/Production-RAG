@@ -1,18 +1,13 @@
 # Production RAG Pipeline Configuration
 # Project 02 | Version 1.1
-#
-# All tunable parameters live here. No magic numbers in code.
-# Reference this file via: config = yaml.safe_load(open("config/settings.yaml"))
 
 ingestion:
-  chunk_size: 512 # Structure-aware chunk size (tokens)
-  chunk_overlap: 50 # Overlap between adjacent chunks
-  min_char_threshold: 100 # Filter for low-text pages (audit finding #1)
-  window_size: 3 # SentenceWindowNodeParser context size
-  table_extraction: true # Enable unstructured table-to-markdown parsing
+  chunk_size: 512
+  chunk_overlap: 50
+  min_char_threshold: 100
+  window_size: 3
+  table_extraction: true
 
-  # Maps filename prefixes → department labels for relational filtering.
-  # Add one entry per domain group in your corpus.
   department_mapping:
     worldbank: "Financial"
     world-bank-access-to-information: "Financial"
@@ -39,7 +34,7 @@ ingestion:
 storage:
   qdrant:
     collection_name: "production_rag_v1"
-    vector_size: 384 # all-MiniLM-L6-v2 output dimension
+    vector_size: 384
     distance: "Cosine"
     host: "localhost"
     port: 6333
@@ -47,58 +42,84 @@ storage:
     persist_path: "storage/bm25_index.pkl"
   postgres:
     schema_name: "rag_pipeline"
-    # Connection string loaded from env: DATABASE_URL
-    # Never hardcode credentials here.
 
 retrieval:
   dense_top_k: 20
   sparse_top_k: 20
-  rrf_k: 60 # Reciprocal Rank Fusion constant (k=60 standard default)
-  rerank_top_n: 5 # Candidates passed to cross-encoder after RRF
-  rerank_pool_size: 15 # Candidates passed from RRF to the reranker
-
-latency:
-  # Sub-budgets revised May 2026 based on local CPU profiling (Llama-3 8B).
-  # 8B model takes ~11s for short tasks and ~80s for reasoning on local CPU.
-  total_p95_ms: 180000 # 3-minute budget for multi-node agent logic
-  retrieval_budget_ms: 500
-  rerank_budget_ms: 2000
-  generation_budget_ms: 150000 # Accommodates 3 sequential LLM calls (Planner/Agent/Validator)
+  rrf_k: 60
+  rerank_top_n: 5
+  rerank_pool_size: 15
 
 models:
   embedding: "sentence-transformers/all-MiniLM-L6-v2"
   reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-  # FIX: Pinned to a specific quantized variant for reproducibility.
-  # "llama3" alone is ambiguous across Ollama versions and machines.
-  # Confirm this tag is available on your machine: `ollama list`
-  llm_local: "llama3:8b-instruct-q4_K_M"
+# =============================================================================
+# DYNAMIC LLM PROVIDER CONFIGURATION
+# =============================================================================
+#
+# The engine will automatically try these profiles in order.
+# First one with a valid API key or reachable endpoint wins.
+#
+llm:
+  provider: "auto"  # Options: "auto", "groq", "openai", "openrouter", "huggingface", "ollama"
 
-  # Alternative for Auditor node if second model is loaded (requires ~8 GB free RAM):
-  # llm_auditor: "mistral:7b-instruct-q4_K_M"
+  profiles:
+    groq:
+      type: "api"
+      env_key: "GROQ_API_KEY"
+      endpoint: "https://api.groq.com/openai/v1/chat/completions"
+      model: "llama-3.3-70b-versatile"
+      timeout: 60
+
+    openai:
+      type: "api"
+      env_key: "OPENAI_API_KEY"
+      endpoint: "https://api.openai.com/v1/chat/completions"
+      model: "gpt-4o-mini"
+      timeout: 60
+
+    openrouter:
+      type: "api"
+      env_key: "OPENROUTER_API_KEY"
+      endpoint: "https://openrouter.ai/api/v1/chat/completions"
+      model: "google/gemma-2-9b-it"
+      timeout: 60
+
+    huggingface:
+      type: "api"
+      env_key: "HF_TOKEN"
+      endpoint: "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct/v1/chat/completions"
+      model: "meta-llama/Llama-3.1-8B-Instruct"
+      timeout: 60
+
+    ollama:
+      type: "ollama"
+      url: "http://localhost:11434/api/generate"
+      model: "llama3:8b-instruct-q4_K_M"
+      timeout: 300
+
+latency:
+  total_p95_ms: 180000
+  generation_budget_ms: 30000
 
 evaluation:
   ragas:
-    # CI regression thresholds — ragas_regression.py reads these directly.
-    # If scores fall below these in CI, the pipeline fails.
-    alert_threshold_cp: 0.75 # Context Precision floor
-    alert_threshold_faith: 0.80 # Faithfulness floor
-    alert_threshold_ar: 0.75 # Answer Relevancy floor
-    alert_threshold_cr: 0.75 # Context Recall floor
-
-    # Production monitoring — sample 5% of queries weekly.
-    # If CP drops below reindex_trigger_cp, trigger re-indexing review.
+    alert_threshold_cp: 0.75
+    alert_threshold_faith: 0.80
+    alert_threshold_ar: 0.75
+    alert_threshold_cr: 0.75
     reindex_trigger_cp: 0.75
     production_sample_rate: 0.05
 
   ground_truth:
     path: "data/ground_truth/ground_truth.json"
-    golden_set_ci: "data/ground_truth/golden_set_ci.json" # small fast subset for CI
-    min_pairs: 50 # Phase 6 will not start until this is met
+    golden_set_ci: "data/ground_truth/golden_set_ci.json"
+    min_pairs: 50
 
 logging:
   level: "INFO"
-  format: "json" # Structured JSON logs — never plain print()
+  format: "json"
   per_query_fields:
     - retrieval_latency_ms
     - rerank_latency_ms

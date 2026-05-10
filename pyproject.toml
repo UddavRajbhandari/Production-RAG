@@ -68,6 +68,9 @@ module = [
     "pytest.*",
     "torch.*",
     "requests.*",
+    "httpx.*",
+    "dotenv.*",
+    "langgraph.*",
 ]
 ignore_missing_imports = true
 
