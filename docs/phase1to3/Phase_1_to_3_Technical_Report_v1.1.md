@@ -188,4 +188,88 @@ While ONNX optimization has significantly reduced reranking latency to the ~520�
 **Phase 4 Entry Status**: **READY**. The core retrieval infrastructure is verified and optimized for local development.
 
 ---
+
+## 8. Phase 6 Preparation: RAGAS Evaluation Infrastructure
+
+### 8.1 Chunker Type Toggle for Iteration Comparison
+
+To support Phase 6 RAGAS evaluation iterations (naive vs structure-aware chunking comparison), the following enhancements were implemented:
+
+**Configuration Addition** (`config/settings.yaml`):
+```yaml
+ingestion:
+  chunker_type: "structure_aware"  # Options: "structure_aware", "naive"
+  # "naive" = simple fixed-token chunks (baseline)
+  # "structure_aware" = respects document structure (tables, code blocks, headings)
+```
+
+**New Components**:
+- `src/ingestion/chunker.py`: Added `NaiveChunker` class and `get_chunker()` factory
+- `src/ingestion/pipeline.py`: Updated to use factory pattern for chunker selection
+
+**Storage Auto-Segmentation**:
+To enable clean comparison between iterations, storage backends auto-append the chunker type suffix:
+
+| Backend | Naive Storage | Structure-Aware Storage |
+|---------|---------------|------------------------|
+| Qdrant | `production_rag_v1_naive` | `production_rag_v1_structure_aware` |
+| BM25 | `bm25_index_naive.pkl` | `bm25_index_structure_aware.pkl` |
+| SQLite | `metadata_naive.db` | `metadata_structure_aware.db` |
+
+### 8.2 RAGAS Evaluation Metrics
+
+The evaluation script (`src/evaluation/evaluate_ragas.py`) was enhanced to compute all 4 standard RAGAS metrics plus a custom metric:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `faithfulness` | RAGAS | Whether answer is grounded in retrieved contexts |
+| `answer_relevancy` | RAGAS | How well answer addresses the question |
+| `context_precision` | RAGAS | Relevance of retrieved chunks to question |
+| `context_recall` | RAGAS | Whether contexts contain ground truth info |
+| `answer_completeness` | Custom | Length-based proxy for answer thoroughness |
+
+**RAGAS Targets** (from project spec):
+- Faithfulness: > 0.80
+- Answer Relevancy: > 0.75
+- Context Precision: 0.61 → 0.84
+- Context Recall: > 0.75
+
+### 8.3 Phase 3 Profiling Results (Current Run)
+
+```
+Query                                            |    Retrieval |     Rerank |      Total
+-----------------------------------------------------------------------------------------
+What period does the fiscal year 2023 cover?    |      628.7ms |   1973.4ms |   2602.1ms
+How many page views for open data?               |      119.2ms |   2471.0ms |   2590.2ms
+What is ChipLingo framework?                     |       80.3ms |   2584.8ms |   2665.1ms
+Who authored the Python tutorial?                |       91.6ms |   2530.7ms |   2622.3ms
+What are the DeepEval metrics?                   |      135.8ms |   2959.7ms |   3095.5ms
+-----------------------------------------------------------------------------------------
+Averages                                         |      211.1ms |   2503.9ms |   2715.1ms
+
+Budget report:
+  PASS  Retrieval: 211.1ms (budget: 500ms)
+  FAIL  Reranking: 2503.9ms (budget: 1000ms) - ONNX not exported
+  PASS  Total: 2715.1ms (budget: 180000ms)
+```
+
+**Note**: Reranking latency is high because ONNX model is not exported (requires `optimum` package). The PyTorch CrossEncoder is used as fallback.
+
+---
+
+## 9. Test Suite Verification
+
+All unit tests pass with the structure-aware chunking implementation:
+
+```
+tests/unit/test_ingestion.py        4 passed
+tests/unit/test_storage.py          4 passed
+tests/unit/test_retrieval.py        4 passed
+tests/unit/reasoning/              33 passed
+─────────────────────────────────────────
+Total                              45 passed (60.26s)
+```
+
+---
+
 *Report End*

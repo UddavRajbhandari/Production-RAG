@@ -236,7 +236,18 @@ export OPENAI_API_KEY="sk-..." # pragma: allowlist secret
 
 ---
 
-## 11. Conclusion
+## 11. Comparative Chunking Strategy (Phase 6 Preparation)
+
+To support the comparative analysis of naive vs. structure-aware chunking, the storage and ingestion layers have been updated to support strategy-specific indexing.
+
+- **Naive Strategy**: Flattens document content and splits purely by token count, ignoring tables, headings, and code block boundaries.
+- **Structure-Aware Strategy**: Respects document structural tags to preserve semantic units (e.g., keeping tables intact).
+
+**Implementation Details:**
+- `config/settings.yaml`: Controls active strategy via `chunker_type`.
+- **Suffixing**: All storage backends (Qdrant, BM25, SQLite) automatically append the strategy name to their collection/file paths (e.g., `metadata_naive.db` vs `metadata_structure_aware.db`) when `use_chunker_suffix` is enabled.
+
+## 12. Conclusion
 
 Phase 4 successfully delivers a stateful reasoning engine that balances the power of multi-agent decomposition with the harsh reality of local CPU compute. By strictly classifying nodes into LLM vs. Non-LLM categories, we have maintained a functional 3-minute reasoning loop.
 

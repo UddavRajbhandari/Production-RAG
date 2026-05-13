@@ -7,6 +7,9 @@ ingestion:
   min_char_threshold: 100
   window_size: 3
   table_extraction: true
+  chunker_type: "structure_aware"  # Options: "structure_aware", "naive"
+  # "naive" = simple fixed-token chunks, no table/code preservation
+  # "structure_aware" = respects document structure (tables, code blocks, headings)
 
   department_mapping:
     worldbank: "Financial"
@@ -38,16 +41,21 @@ storage:
     distance: "Cosine"
     host: "localhost"
     port: 6333
+    # Auto-appends "_naive" or "_structure_aware" based on chunker_type
+    # Set use_chunker_suffix: false to disable this behavior
+    use_chunker_suffix: true
   bm25:
     persist_path: "storage/bm25_index.pkl"
+    use_chunker_suffix: true
   postgres:
     schema_name: "rag_pipeline"
+    use_chunker_suffix: true
 
 retrieval:
   dense_top_k: 20
   sparse_top_k: 20
   rrf_k: 60
-  rerank_top_n: 5
+  rerank_top_n: 7
   rerank_pool_size: 15
 
 models:
@@ -62,7 +70,7 @@ models:
 # First one with a valid API key or reachable endpoint wins.
 #
 llm:
-  provider: "auto"  # Options: "auto", "groq", "openai", "openrouter", "huggingface", "ollama"
+  provider: "openrouter"  # Auto-detect: groq -> openai -> openrouter -> huggingface -> ollama
 
   profiles:
     groq:
@@ -83,13 +91,15 @@ llm:
       type: "api"
       env_key: "OPENROUTER_API_KEY"
       endpoint: "https://openrouter.ai/api/v1/chat/completions"
-      model: "google/gemma-2-9b-it"
+      model: "meta-llama/llama-3.1-8b-instruct"
       timeout: 60
 
     huggingface:
+      # Disabled: HF Inference API not available on free tier
+      # Use Groq (when quota available) -> Ollama (fallback) instead
       type: "api"
       env_key: "HF_TOKEN"
-      endpoint: "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct/v1/chat/completions"
+      endpoint: "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct"
       model: "meta-llama/Llama-3.1-8B-Instruct"
       timeout: 60
 
@@ -97,11 +107,13 @@ llm:
       type: "ollama"
       url: "http://localhost:11434/api/generate"
       model: "llama3:8b-instruct-q4_K_M"
-      timeout: 300
+      timeout: 1800  # 30 minutes for CPU inference
 
 latency:
   total_p95_ms: 180000
   generation_budget_ms: 30000
+  retrieval_budget_ms: 500  # Budget for dense+sparse retrieval
+  rerank_budget_ms: 1000    # Budget for cross-encoder reranking
 
 evaluation:
   ragas:

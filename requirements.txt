@@ -1,3 +1,33 @@
+# Core dependencies
 tiktoken>=0.7.0
 optimum>=1.18.0
 onnxruntime>=1.18.0
+python-dotenv>=1.2.2
+
+# RAG & Reasoning
+langchain==1.2.18
+langgraph==1.1.10
+llama-index==0.14.21
+ragas==0.4.3
+rank-bm25==0.2.2
+
+# Data Processing
+PyMuPDF==1.27.2.3
+python-docx==1.2.0
+openpyxl==3.1.5
+unstructured==0.18.32
+pandas==2.3.3
+numpy==2.2.6
+
+# Embeddings & Inference
+sentence-transformers==5.4.1
+transformers==5.7.0
+torch==2.11.0
+qdrant-client==1.17.1
+openai==2.34.0
+
+# Validation & Quality
+pytest==9.0.3
+ruff==0.15.12
+mypy==1.20.2
+pre_commit==4.6.0

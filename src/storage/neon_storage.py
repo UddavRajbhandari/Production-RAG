@@ -74,7 +74,15 @@ class NeonStorage:
 
         db_url = os.environ.get("DATABASE_URL")
         if not db_url:
-            db_url = "sqlite:///storage/metadata.db"
+            # Auto-append chunker suffix for Phase 6 iteration comparison
+            # e.g., "storage/metadata.db" -> "storage/metadata_naive.db"
+            if self.config["storage"]["postgres"].get("use_chunker_suffix", True):
+                ing = self.config.get("ingestion", {})
+                chunker_type = ing.get("chunker_type", "structure_aware")
+                base_name = "storage/metadata.db".replace(".db", "")
+                db_url = f"sqlite:///{base_name}_{chunker_type}.db"
+            else:
+                db_url = "sqlite:///storage/metadata.db"
             logger.warning("DATABASE_URL not set — using local SQLite: %s", db_url)
         else:
             logger.info("Using database: %s", db_url.split("@")[-1])  # hide credentials
@@ -166,5 +174,14 @@ class NeonStorage:
                 }
                 for r in rows
             ]
+        finally:
+            session.close()
+
+    def get_node_by_id(self, node_id: str) -> ChunkMetadata | None:
+        """Fetch a single metadata record by its primary key ID."""
+        session = self.Session()
+        try:
+            result: ChunkMetadata | None = session.get(ChunkMetadata, node_id)
+            return result
         finally:
             session.close()

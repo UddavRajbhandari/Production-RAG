@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from src.ingestion.chunker import StructureAwareChunker
+from src.ingestion.chunker import get_chunker
 from src.ingestion.metadata_pipeline import MetadataPipeline
 from src.ingestion.parser import DocumentParser
 from src.ingestion.structure_analyzer import StructureAnalyzer
@@ -27,7 +27,9 @@ class IngestionPipeline:
         self.analyzer = StructureAnalyzer(
             min_char_threshold=self.config["ingestion"]["min_char_threshold"]
         )
-        self.chunker = StructureAwareChunker(
+        chunker_type = self.config["ingestion"].get("chunker_type", "structure_aware")
+        self.chunker = get_chunker(
+            chunker_type=chunker_type,
             chunk_size=self.config["ingestion"]["chunk_size"],
             chunk_overlap=self.config["ingestion"]["chunk_overlap"],
         )

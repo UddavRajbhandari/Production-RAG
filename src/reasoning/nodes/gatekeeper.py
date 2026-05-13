@@ -24,18 +24,24 @@ class GatekeeperNode:
         start_time = time.perf_counter()
 
         prompt = f"""
-Analyze the following user query and the generated answer.
-Determine if the answer directly and accurately addresses the query.
+        Analyze the following user query and the generated answer.
+        Determine if the answer directly and accurately addresses the query.
 
-User Query: {state["query"]}
-Generated Answer: {state["generated_answer"]}
+        User Query: {state["query"]}
+        Generated Answer: {state["generated_answer"]}
 
-Rules:
-1. Output ONLY a JSON object with 'passed' (boolean) and 'reason' (string).
-2. 'passed' should be true only if the answer is relevant and helpful.
+        Rules:
+        1. 'passed' should be true if the answer is factually correct
+           and helpful relative to the query.
+        2. Do NOT reject an answer just because it uses different phrasing
+           or is slightly concise, as long as the core information is present.
+        3. If the answer states it doesn't have enough information (and this
+           is true based on typical RAG constraints), 'passed' should be true
+           (this is a valid "honest" answer).
+        4. Output ONLY a JSON object with 'passed' (boolean) and 'reason' (string).
 
-JSON Output:
-"""
+        JSON Output:
+        """
         try:
             result = self.llm_client.generate_json(
                 prompt=prompt,

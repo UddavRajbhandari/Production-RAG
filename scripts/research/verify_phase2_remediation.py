@@ -3,9 +3,9 @@ import uuid
 
 from sqlalchemy import inspect
 
-from src.storage.bm25_index import BM25Storage
-from src.storage.neon_db import NeonStorage
-from src.storage.qdrant_client import QdrantStorage
+from src.storage.bm25_storage import BM25Storage
+from src.storage.neon_storage import NeonStorage
+from src.storage.qdrant_storage import QdrantStorage
 
 
 def verify_phase2() -> None:
@@ -30,7 +30,7 @@ def verify_phase2() -> None:
 
     # 2. File location
     print("\n2. Verifying file locations...")
-    neon_path = "src/storage/neon_db.py"
+    neon_path = "src/storage/neon_storage.py"
     if os.path.exists(neon_path):
         print(f"  {neon_path} exists in storage directory ✓")
     else:
