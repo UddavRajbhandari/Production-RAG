@@ -49,10 +49,13 @@ Thumbs.db
 # Project-specific (RAG)
 # =========================
 # Project-specific (RAG)
-storage/
-*.pkl
-*.db
-
+# Track Python files in storage/ but ignore generated data
+storage/*.py
+!storage/__init__.py
+storage/*.pkl
+storage/*.db
+storage/__pycache__/
+storage/qdrant_data/
 # Data directories
 data/raw/
 data/processed/
@@ -82,3 +85,7 @@ CLAUDE.md
 
 .claude
 .agents
+docs/System_Reference_Documentation.md
+gha-creds-*.json
+.mcp.json
+.gemini/

@@ -15,8 +15,8 @@ from qdrant_client.http import models
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
 
-from src.storage.bm25_index import BM25Storage
-from src.storage.qdrant_client import QdrantStorage
+from src.storage.bm25_storage import BM25Storage
+from src.storage.qdrant_storage import QdrantStorage
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +98,17 @@ class HybridRetriever:
         return expanded
 
     def _extract_year_filter(self, query: str) -> str | None:
-        """Extracts years like 2023 or FY23 from the query."""
-        match = re.search(r"(20\d{2}|FY\d{2})", query)
-        return match.group(1) if match else None
+        """Extracts years like 2023 or FY23 from the query and normalizes to YYYY."""
+        match = re.search(r"(20\d{2}|FY(\d{2}))", query)
+        if not match:
+            return None
+
+        year = match.group(1)
+        if year.startswith("FY"):
+            # Normalize FY23 -> 2023
+            short_year = match.group(2)
+            return f"20{short_year}"
+        return year
 
     def _dense_search(self, query: str, year_filter: str | None = None) -> list[Any]:
         """Vector search against Qdrant with optional hard metadata filters."""

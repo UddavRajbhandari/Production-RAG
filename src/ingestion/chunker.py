@@ -112,3 +112,108 @@ class StructureAwareChunker:
             start += step
 
         return chunks
+
+
+class NaiveChunker:
+    """
+    Naive chunker that simply splits text by token count.
+    Does NOT respect document structure - tables, code blocks, and headings
+    are treated the same as regular text.
+
+    This serves as the baseline for Phase 6 RAGAS iteration comparison.
+    """
+
+    _ENCODING_NAME = "cl100k_base"
+
+    def __init__(self, chunk_size: int = 512, chunk_overlap: int = 50) -> None:
+        """
+        Args:
+            chunk_size:    Maximum tokens per chunk (hard ceiling).
+            chunk_overlap: Token overlap between adjacent split chunks.
+        """
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self._enc = tiktoken.get_encoding(self._ENCODING_NAME)
+
+    def chunk(self, structured_tree: list[dict[str, Any]]) -> list[TextNode]:
+        """
+        Flattens all content and chunks without structure awareness.
+        Tables and code blocks are split just like regular text.
+        """
+        nodes: list[TextNode] = []
+
+        # Flatten all blocks into one text stream
+        all_text_parts = []
+        for block in structured_tree:
+            content = block.get("content", "")
+            if content:
+                all_text_parts.append(content)
+
+        combined_text = "\n\n".join(all_text_parts)
+
+        # Simply split by token count - no structure awareness
+        token_count = self._count_tokens(combined_text)
+        if token_count > self.chunk_size:
+            sub_chunks = self._token_split(combined_text)
+            for i, sub_content in enumerate(sub_chunks):
+                nodes.append(
+                    TextNode(
+                        text=sub_content,
+                        metadata={"type": "naive_chunk", "sub_index": i},
+                    )
+                )
+        else:
+            nodes.append(
+                TextNode(
+                    text=combined_text,
+                    metadata={"type": "naive_chunk"},
+                )
+            )
+
+        return nodes
+
+    def _count_tokens(self, text: str) -> int:
+        """Returns the exact token count for a string."""
+        return len(self._enc.encode(text))
+
+    def _token_split(self, text: str) -> list[str]:
+        """Splits text into chunks of at most `chunk_size` tokens."""
+        token_ids = self._enc.encode(text)
+        chunks: list[str] = []
+
+        step = self.chunk_size - self.chunk_overlap
+        if step <= 0:
+            step = self.chunk_size
+
+        start = 0
+        while start < len(token_ids):
+            end = min(start + self.chunk_size, len(token_ids))
+            window = token_ids[start:end]
+            chunks.append(self._enc.decode(window))
+            if end == len(token_ids):
+                break
+            start += step
+
+        return chunks
+
+
+def get_chunker(
+    chunker_type: str = "structure_aware",
+    chunk_size: int = 512,
+    chunk_overlap: int = 50,
+) -> StructureAwareChunker | NaiveChunker:
+    """
+    Factory function to get the appropriate chunker.
+
+    Args:
+        chunker_type: "structure_aware" or "naive"
+        chunk_size: Maximum tokens per chunk
+        chunk_overlap: Token overlap between chunks
+
+    Returns:
+        An instance of the appropriate chunker
+    """
+    if chunker_type == "naive":
+        return NaiveChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    else:
+        return StructureAwareChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)

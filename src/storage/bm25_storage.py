@@ -26,7 +26,16 @@ class BM25Storage:
         with open(config_path) as f:
             self.config: dict = yaml.safe_load(f)
 
-        self.persist_path = self.config["storage"]["bm25"]["persist_path"]
+        base_path = self.config["storage"]["bm25"]["persist_path"]
+        # Auto-append chunker suffix for Phase 6 iteration comparison
+        # e.g., "storage/bm25_index.pkl" -> "storage/bm25_index_naive.pkl"
+        if self.config["storage"]["bm25"].get("use_chunker_suffix", True):
+            ing = self.config.get("ingestion", {})
+            chunker_type = ing.get("chunker_type", "structure_aware")
+            base_name = base_path.replace(".pkl", "")
+            base_path = f"{base_name}_{chunker_type}.pkl"
+
+        self.persist_path = base_path
         self.index: BM25Okapi | None = None
         self.nodes: list[TextNode] = []
 

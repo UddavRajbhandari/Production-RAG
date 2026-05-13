@@ -37,6 +37,13 @@ class QdrantStorage:
         self.vector_size = q_config["vector_size"]
         self.distance = q_config["distance"]
 
+        # Auto-append chunker suffix for Phase 6 iteration comparison
+        # e.g., "production_rag_v1" -> "production_rag_v1_naive"
+        if q_config.get("use_chunker_suffix", True):
+            ing = self.config.get("ingestion", {})
+            chunker_type = ing.get("chunker_type", "structure_aware")
+            self.collection_name = f"{self.collection_name}_{chunker_type}"
+
         self.client = self._connect(q_config)
 
     def _connect(self, q_config: dict[str, Any]) -> QdrantClient:
