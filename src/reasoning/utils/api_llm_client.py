@@ -5,6 +5,7 @@ Supports: OpenAI, Anthropic (adapter), LM Studio, Ollama (v1), etc.
 """
 
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -60,72 +61,124 @@ class APILLMClient:
             "Content-Type": "application/json",
         }
 
-        # Build payload - OpenAI format
-        payload: dict[str, Any] = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": temperature,
-        }
+        # Detect HuggingFace endpoint and use appropriate format
+        is_huggingface = "huggingface.co" in self.config.endpoint
 
-        # Request JSON format if needed
-        if format_json:
-            payload["response_format"] = {"type": "json_object"}
+        if is_huggingface:
+            # HuggingFace format
+            payload: dict[str, Any] = {
+                "inputs": prompt,
+                "parameters": {
+                    "temperature": temperature,
+                    "max_new_tokens": self.config.timeout * 2,
+                },
+            }
+        else:
+            # OpenAI-compatible format
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+            }
+            if format_json:
+                payload["response_format"] = {"type": "json_object"}
 
-        try:
-            response = self.client.post(
-                self.config.endpoint,
-                json=payload,
-                headers=headers,
-            )
-            response.raise_for_status()
-            result = response.json()
+        # Retry logic for rate limiting
+        max_retries = 3
+        result = None
 
+        for attempt in range(max_retries):
+            try:
+                response = self.client.post(
+                    self.config.endpoint,
+                    json=payload,
+                    headers=headers,
+                )
+
+                # Handle rate limiting (429) with retry
+                if response.status_code == 429:
+                    # Extract retry-after from response or error message
+                    retry_after = 30  # default
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get("error", {}).get("message", "")
+                        # Try to extract seconds from message: "try again in 15.735s"
+                        match = re.search(r"try again in ([\d.]+)s", error_msg)
+                        if match:
+                            retry_after = int(float(match.group(1))) + 1  # add buffer
+                        else:
+                            # Check headers
+                            retry_after = int(response.headers.get("retry-after", 30))
+                    except Exception:
+                        pass
+
+                    if attempt < max_retries - 1:
+                        logger.info(
+                            f"Rate limited (429), waiting {retry_after}s "
+                            f"before retry {attempt + 2}/{max_retries}..."
+                        )
+                        time.sleep(retry_after)
+                        continue
+                    else:
+                        # All retries exhausted
+                        raise httpx.HTTPStatusError(
+                            "Rate limit exceeded after retries",
+                            request=response.request,
+                            response=response,
+                        )
+
+                response.raise_for_status()
+                result = response.json()
+                break  # Success, exit retry loop
+
+            except httpx.HTTPStatusError:
+                if response.status_code == 429 and attempt < max_retries - 1:
+                    logger.info(
+                        f"Rate limited (429), retrying in {5 * (attempt + 1)}s..."
+                    )
+                    time.sleep(5 * (attempt + 1))  # short backoff
+                    continue
+                raise
+            except httpx.TimeoutException:
+                if attempt < max_retries - 1:
+                    logger.warning("Timeout, retrying...")
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                raise
+
+        # Process result after successful response
+        if result is None:
             latency_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "text": "",
+                "raw_response": {},
+                "latency_ms": latency_ms,
+                "success": False,
+                "error": "Max retries exceeded",
+            }
 
-            # Extract text from response
-            text = ""
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        # Extract text from response
+        text = ""
+        if is_huggingface:
+            # HuggingFace format: [{"generated_text": "..."}]
+            if isinstance(result, list) and len(result) > 0:
+                text = result[0].get("generated_text", "")
+            elif "generated_text" in result:
+                text = result.get("generated_text", "")
+        else:
+            # OpenAI format
             if "choices" in result and len(result["choices"]) > 0:
                 text = result["choices"][0].get("message", {}).get("content", "")
 
-            return {
-                "text": text,
-                "raw_response": result,
-                "latency_ms": latency_ms,
-                "success": True,
-                "error": None,
-            }
-
-        except httpx.TimeoutException:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.warning(f"API request timeout after {latency_ms:.0f}ms")
-            return {
-                "text": "",
-                "raw_response": {},
-                "latency_ms": latency_ms,
-                "success": False,
-                "error": f"Timeout after {self.config.timeout}s",
-            }
-        except httpx.HTTPStatusError as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            error_msg = f"API HTTP error: {e.response.status_code} - {e.response.text}"
-            logger.error(error_msg)
-            return {
-                "text": "",
-                "raw_response": {},
-                "latency_ms": latency_ms,
-                "success": False,
-                "error": f"HTTP {e.response.status_code}",
-            }
-        except Exception as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"API request failed: {e}")
-            return {
-                "text": "",
-                "raw_response": {},
-                "latency_ms": latency_ms,
-                "success": False,
-                "error": str(e),
-            }
+        return {
+            "text": text,
+            "raw_response": result,
+            "latency_ms": latency_ms,
+            "success": True,
+            "error": None,
+        }
 
     def generate_json(
         self,

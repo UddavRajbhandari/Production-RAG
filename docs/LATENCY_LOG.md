@@ -10,25 +10,30 @@ This log tracks the end-to-end performance of the RAG pipeline. Metrics are reco
 | 2026-05-07 | Phase 3 Exit | Post-Remediation (PyTorch) | 188.5 | 2,269.2 | N/A | 2,457.7 | ❌ OVER BUDGET |
 | 2026-05-08 | Phase 3 Exit | Post-Remediation (ONNX - Est.) | 188.5 | ~500.0 | TBD | ~688.5 | ⚠️ WARM |
 | 2026-05-08 | Phase 3 Exit | 8B Model CPU Baseline | 152.0 | ~500.0 | ~47,568 | ~48,220 | ❌ 3-MIN BUDGET |
+| 2026-05-13 | Phase 4/5 | Groq API Integration | ~150 | ~500 | ~2,500 | ~3,150 | ✅ COMPLIANT |
+| 2026-05-12 | Phase 6 Eval | Ollama Fallback (Llama-3 8B) | 152.0 | ~500.0 | > 180,000 | > 180,000 | ❌ CPU BOTTLENECK |
 
 ---
 
 ## Component Benchmarks (Averages)
 
 ### LLM Inference (Ollama - Llama-3-8B-Instruct - CPU)
-*Profiled 2026-05-08. Hardware: 16GB RAM, No GPU.*
+*Profiled 2026-05-12. Hardware: 16GB RAM, No GPU.*
 
-| Prompt Type | TTFT (ms) | TPS (tokens/s) | Total Time (ms) |
-|---|---|---|---|
-| Routing (short) | 10,333 | 0.4 | 11,287 |
-| Summary (med) | 21,392 | 1.8 | 51,510 |
-| Reasoning (long) | 15,448 | 2.5 | 79,908 |
+| Prompt Type | TTFT (ms) | TPS (tokens/s) | Total Time (ms) | Status |
+|---|---|---|---|---|
+| Routing (short) | 10,333 | 0.4 | 11,287 | Baseline |
+| Summary (med) | 21,392 | 1.8 | 51,510 | Baseline |
+| Reasoning (long) | 15,448 | 2.5 | 79,908 | Baseline |
+| Cold Start (test) | ~170,000 | < 0.1 | 176,910 | ⚠️ CRITICAL SLOWDOWN |
 
 ---
 
 ## Strategic Risk: Hardware Latency Ceiling
 The **Llama-3 8B model** on local CPU is too slow for sequential "Planner -> Agent -> Validator" logic under original RAG targets.
 
+**Update 2026-05-12:**
+Phase 6 evaluation confirmed that unsetting API keys triggers the **Ollama fallback** correctly. However, a single reasoning query (5+ LLM nodes) exceeds 15 minutes on local CPU, making a full 68-query evaluation run prohibitive without GPU acceleration or a significantly smaller model (e.g., Llama-3.2 1B).
 **Decision Log:**
 1. **Revised Target:** Updated `total_p95_ms` in `settings.yaml` to **180,000ms** (3 minutes).
 2. **Inference Mode:** Path B (Streaming) will be implemented in Phase 8 to mitigate UX impact. Phase 4 will focus on **Accuracy/Correctness** via sequential nodes.

@@ -28,9 +28,9 @@ echo "📊 Validating Ground Truth..."
 python src/evaluation/validate_ground_truth.py data/ground_truth/ground_truth.json
 
 # ── RAGAS (Phase 6+) ───────────────────────
-if [ -f src/evaluation/ragas_regression.py ]; then
+if [ -f src/evaluation/evaluate_ragas.py ]; then
   echo "📈 Running RAGAS (non-blocking)..."
-  python src/evaluation/ragas_regression.py \
+  python src/evaluation/evaluate_ragas.py \
     --golden-set data/ground_truth/golden_set_ci.json \
     --config config/settings.yaml || true
 else

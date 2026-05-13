@@ -1,129 +1,111 @@
-# Production RAG Pipeline Configuration
-# Project 02 | Version 1.1
-
+evaluation:
+  ground_truth:
+    golden_set_ci: data/ground_truth/golden_set_ci.json
+    min_pairs: 50
+    path: data/ground_truth/ground_truth.json
+  ragas:
+    alert_threshold_ar: 0.75
+    alert_threshold_cp: 0.75
+    alert_threshold_cr: 0.75
+    alert_threshold_faith: 0.8
+    production_sample_rate: 0.05
+    reindex_trigger_cp: 0.75
 ingestion:
-  chunk_size: 512
   chunk_overlap: 50
-  min_char_threshold: 100
-  window_size: 3
-  table_extraction: true
-
+  chunk_size: 512
+  chunker_type: structure_aware # naive or structure_aware
   department_mapping:
-    worldbank: "Financial"
-    world-bank-access-to-information: "Financial"
-    wbg-a2i: "Financial"
-    ati-annual-report: "Financial"
-    access-to-i: "Financial"
-    imf: "Financial"
-    annual-report: "Financial"
-    budget: "Financial"
-    fiscal: "Financial"
-    "2508.": "Academic"
-    "2604.": "Academic"
-    "2605.": "Academic"
-    arxiv: "Academic"
-    paper: "Academic"
-    research: "Academic"
-    fao_: "Academic"
-    chipfabric: "Technical"
-    deepeval: "Technical"
-    chiplingo: "Technical"
-    python: "Technical"
-    wb_clear: "Technical"
-
-storage:
-  qdrant:
-    collection_name: "production_rag_v1"
-    vector_size: 384
-    distance: "Cosine"
-    host: "localhost"
-    port: 6333
-  bm25:
-    persist_path: "storage/bm25_index.pkl"
-  postgres:
-    schema_name: "rag_pipeline"
-
-retrieval:
-  dense_top_k: 20
-  sparse_top_k: 20
-  rrf_k: 60
-  rerank_top_n: 5
-  rerank_pool_size: 15
-
-models:
-  embedding: "sentence-transformers/all-MiniLM-L6-v2"
-  reranker: "cross-encoder/ms-marco-MiniLM-L-6-v2"
-
-# =============================================================================
-# DYNAMIC LLM PROVIDER CONFIGURATION
-# =============================================================================
-#
-# The engine will automatically try these profiles in order.
-# First one with a valid API key or reachable endpoint wins.
-#
+    '2508.': Academic
+    '2604.': Academic
+    '2605.': Academic
+    access-to-i: Financial
+    annual-report: Financial
+    arxiv: Academic
+    ati-annual-report: Financial
+    budget: Financial
+    chipfabric: Technical
+    chiplingo: Technical
+    deepeval: Technical
+    fao_: Academic
+    fiscal: Financial
+    imf: Financial
+    paper: Academic
+    python: Technical
+    research: Academic
+    wb_clear: Technical
+    wbg-a2i: Financial
+    world-bank-access-to-information: Financial
+    worldbank: Financial
+  min_char_threshold: 100
+  table_extraction: true
+  window_size: 3
+latency:
+  generation_budget_ms: 30000
+  rerank_budget_ms: 1000
+  retrieval_budget_ms: 500
+  total_p95_ms: 180000
 llm:
-  provider: "auto"  # Options: "auto", "groq", "openai", "openrouter", "huggingface", "ollama"
-
   profiles:
     groq:
-      type: "api"
-      env_key: "GROQ_API_KEY"
-      endpoint: "https://api.groq.com/openai/v1/chat/completions"
-      model: "llama-3.3-70b-versatile"
+      endpoint: https://api.groq.com/openai/v1/chat/completions
+      env_key: GROQ_API_KEY
+      model: llama-3.3-70b-versatile
       timeout: 60
-
-    openai:
-      type: "api"
-      env_key: "OPENAI_API_KEY"
-      endpoint: "https://api.openai.com/v1/chat/completions"
-      model: "gpt-4o-mini"
-      timeout: 60
-
-    openrouter:
-      type: "api"
-      env_key: "OPENROUTER_API_KEY"
-      endpoint: "https://openrouter.ai/api/v1/chat/completions"
-      model: "google/gemma-2-9b-it"
-      timeout: 60
-
+      type: api
     huggingface:
-      type: "api"
-      env_key: "HF_TOKEN"
-      endpoint: "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct/v1/chat/completions"
-      model: "meta-llama/Llama-3.1-8B-Instruct"
+      endpoint: https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+      env_key: HF_TOKEN
+      model: meta-llama/Llama-3.1-8B-Instruct
       timeout: 60
-
+      type: api
     ollama:
-      type: "ollama"
-      url: "http://localhost:11434/api/generate"
-      model: "llama3:8b-instruct-q4_K_M"
-      timeout: 300
-
-latency:
-  total_p95_ms: 180000
-  generation_budget_ms: 30000
-
-evaluation:
-  ragas:
-    alert_threshold_cp: 0.75
-    alert_threshold_faith: 0.80
-    alert_threshold_ar: 0.75
-    alert_threshold_cr: 0.75
-    reindex_trigger_cp: 0.75
-    production_sample_rate: 0.05
-
-  ground_truth:
-    path: "data/ground_truth/ground_truth.json"
-    golden_set_ci: "data/ground_truth/golden_set_ci.json"
-    min_pairs: 50
-
+      model: llama3:8b-instruct-q4_K_M
+      timeout: 1800
+      type: ollama
+      url: http://localhost:11434/api/generate
+    openai:
+      endpoint: https://api.openai.com/v1/chat/completions
+      env_key: OPENAI_API_KEY
+      model: gpt-4o-mini
+      timeout: 60
+      type: api
+    openrouter:
+      endpoint: https://openrouter.ai/api/v1/chat/completions
+      env_key: OPENROUTER_API_KEY
+      model: meta-llama/llama-3.1-8b-instruct
+      timeout: 60
+      type: api
+  provider: openrouter # grok , openrouter or ollama
 logging:
-  level: "INFO"
-  format: "json"
+  format: json
+  level: INFO
   per_query_fields:
-    - retrieval_latency_ms
-    - rerank_latency_ms
-    - generation_latency_ms
-    - total_latency_ms
-    - validation_passed
-    - cost_usd
+  - retrieval_latency_ms
+  - rerank_latency_ms
+  - generation_latency_ms
+  - total_latency_ms
+  - validation_passed
+  - cost_usd
+models:
+  embedding: sentence-transformers/all-MiniLM-L6-v2
+  reranker: cross-encoder/ms-marco-MiniLM-L-6-v2
+retrieval:
+  dense_top_k: 20
+  rerank_pool_size: 15
+  rerank_top_n: 7
+  rrf_k: 60
+  sparse_top_k: 20
+storage:
+  bm25:
+    persist_path: storage/bm25_index.pkl
+    use_chunker_suffix: true
+  postgres:
+    schema_name: rag_pipeline
+    use_chunker_suffix: true
+  qdrant:
+    collection_name: production_rag_v1
+    distance: Cosine
+    host: localhost
+    port: 6333
+    use_chunker_suffix: true
+    vector_size: 384

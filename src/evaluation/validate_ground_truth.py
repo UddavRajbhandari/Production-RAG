@@ -8,7 +8,7 @@ def validate(path: str) -> None:
         print(f"ERROR: File not found at {path}")
         sys.exit(1)
 
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         try:
             pairs = json.load(f)
         except json.JSONDecodeError:
@@ -36,9 +36,18 @@ def validate(path: str) -> None:
             errors.append(f"{qid}: invalid domain_tag '{pair.get('domain_tag')}'")
 
     # Track B check — only warn, not error, on empty chunk IDs
-    empty_chunks = [
-        p["question_id"] for p in pairs if not p.get("ground_truth_chunk_ids")
-    ]
+    # Supports both old format (array) and new format (object with
+    # naive/structure_aware keys)
+    empty_chunks = []
+    for p in pairs:
+        chunk_ids = p.get("ground_truth_chunk_ids", {})
+        if isinstance(chunk_ids, dict):
+            # New format: check if both naive and structure_aware are empty
+            if not chunk_ids.get("naive") and not chunk_ids.get("structure_aware"):
+                empty_chunks.append(p["question_id"])
+        elif isinstance(chunk_ids, list) and not chunk_ids:
+            # Old format: empty list
+            empty_chunks.append(p["question_id"])
     if empty_chunks:
         print(f"WARNING: {len(empty_chunks)} pairs have no chunk IDs yet.")
 

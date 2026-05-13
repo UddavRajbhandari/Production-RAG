@@ -3,9 +3,14 @@
     "question_id": "gt_001",
     "question": "What period does the fiscal year 2023 (FY23) cover in the World Bank Access to Information report?",
     "ground_truth_answer": "In the World Bank Access to Information report, fiscal year 2023 (FY23) specifically refers to the period beginning on July 1, 2022, and ending on June 30, 2023. During this fiscal year, the Bank continued its commitment to transparency and accountability through the rigorous implementation of its Access to Information (ATI) Policy.",
-    "ground_truth_chunk_ids": [
-      "71133121-29be-43b0-9873-7dc17bced5db"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_1cff30362151"
+      ],
+      "structure_aware": [
+        "sa_1cff30362151"
+      ]
+    },
     "source_document": "Access-to-Information-2023-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -13,9 +18,14 @@
     "question_id": "gt_002",
     "question": "How many page views were recorded for the World Bank's Open Data in the FY23 Access to Information report?",
     "ground_truth_answer": "According to the FY23 Access to Information report, the World Bank's Open Data initiatives recorded over 114 million page views. The report also highlights that there are over 15,700 available development datasets, indicators, and visualizations, which resulted in over 2.5 million downloads.",
-    "ground_truth_chunk_ids": [
-      "6dc33ff1-ffd5-44ba-bb87-c6ef34f3574f"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_1cff30362151"
+      ],
+      "structure_aware": [
+        "sa_3b9f2b2dd82f"
+      ]
+    },
     "source_document": "Access-to-Information-2023-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -23,9 +33,14 @@
     "question_id": "gt_003",
     "question": "Which retrieval strategy achieved the best composite score in the benchmarking study for biomedical RAG?",
     "ground_truth_answer": "In the systematic empirical comparison of retrieval strategies for biomedical RAG, Cross-Encoder Reranking achieved the best composite score of 0.827. It also attained the highest contextual precision (0.852), confirming that detailed query-document interaction yields the most significant retrieval gains in the biomedical domain.",
-    "ground_truth_chunk_ids": [
-      "8de899ac-c240-4e89-8c7e-77f58c1435a7"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_cf9f29dbf4d4"
+      ],
+      "structure_aware": [
+        "sa_cf9f29dbf4d4"
+      ]
+    },
     "source_document": "2605.02520v1.pdf",
     "domain_tag": "academic"
   },
@@ -33,9 +48,14 @@
     "question_id": "gt_004",
     "question": "What are the four DeepEval metrics used in the evaluation framework of the biomedical RAG study?",
     "ground_truth_answer": "The evaluation framework for the biomedical RAG study utilized four DeepEval metrics: (1) contextual precision, which evaluates the signal-to-noise ratio in the retrieved context; (2) contextual recall, which assesses the coverage of necessary evidence; (3) faithfulness, which measures the factual consistency of the generated answer with the provided context; and (4) answer relevancy, which determines how well the answer addresses the question.",
-    "ground_truth_chunk_ids": [
-      "68b53ae8-b783-47c0-a082-7352b01ea89c"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_b6d6cb12b0f2"
+      ],
+      "structure_aware": [
+        "sa_877bcae2ef63"
+      ]
+    },
     "source_document": "2605.02520v1.pdf",
     "domain_tag": "academic"
   },
@@ -43,7 +63,14 @@
     "question_id": "gt_005",
     "question": "Who is listed as the primary author of the Python 3.7.0 Tutorial released on September 02, 2018?",
     "ground_truth_answer": "Guido van Rossum is listed as the primary author of the Python 3.7.0 Tutorial, released on September 02, 2018. The document was produced by the Python Software Foundation and includes contributions from the Python development team.",
-    "ground_truth_chunk_ids": [],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_b5d68d547f09"
+      ],
+      "structure_aware": [
+        "sa_c4e8461ab31a"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -51,9 +78,14 @@
     "question_id": "gt_006",
     "question": "According to the Python 3.7.0 tutorial contents, which section covers 'Using the Python Interpreter'?",
     "ground_truth_answer": "According to the table of contents in the Python 3.7.0 tutorial, Section 2 is titled 'Using the Python Interpreter' (starting on page 5). This section includes sub-topics such as 'Invoking the Interpreter' (2.1) and 'The Interpreter and Its Environment' (2.2).",
-    "ground_truth_chunk_ids": [
-      "8c7a5942-e940-4367-b2b1-d0c0dcfc12e7"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_4386e2743563"
+      ],
+      "structure_aware": [
+        "sa_b5490dfb15c5"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -61,9 +93,14 @@
     "question_id": "gt_007",
     "question": "What is the theme of the World Bank's Access to Information Annual Report for FY 2012?",
     "ground_truth_answer": "The theme of the World Bank's Access to Information Annual Report for Fiscal Year 2012 is 'Moving Forward Transparency and Accountability'. This theme is prominently displayed on the cover and the introductory pages of the report.",
-    "ground_truth_chunk_ids": [
-      "43d5fdf2-7044-436c-a4b0-7cd338af6ec9"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_5e219649d483"
+      ],
+      "structure_aware": [
+        "sa_aaa61ed1df39"
+      ]
+    },
     "source_document": "AtI-annual-report-2012.pdf",
     "domain_tag": "financial"
   },
@@ -71,9 +108,14 @@
     "question_id": "gt_008",
     "question": "Does the World Bank guarantee the accuracy of the data included in the FY 2012 Access to Information report?",
     "ground_truth_answer": "No, the World Bank explicitly states on the copyright and acknowledgments page (page ii) that it does not guarantee the accuracy of the data included in the FY 2012 report. The boundaries, colors, and other information shown on maps do not imply any judgment on the part of the Bank concerning the legal status of any territory.",
-    "ground_truth_chunk_ids": [
-      "e2a86198-ba78-4b6d-8b6d-50a3de2af5f7"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_aaa61ed1df39"
+      ],
+      "structure_aware": [
+        "sa_dca1ff956214"
+      ]
+    },
     "source_document": "AtI-annual-report-2012.pdf",
     "domain_tag": "financial"
   },
@@ -81,9 +123,14 @@
     "question_id": "gt_009",
     "question": "Who should be contacted for queries on rights and licenses for the FY 2014 Access to Information report?",
     "ground_truth_answer": "Queries regarding rights and licenses for the FY 2014 Access to Information report should be addressed to World Bank Publications, The World Bank Group, located at 1818 H Street NW, Washington, DC 20433, USA. Alternatively, they can be reached via fax at 202-522-2625 or e-mail at pubrights@worldbank.org.",
-    "ground_truth_chunk_ids": [
-      "9e1d8007-22e1-4a7e-8b78-8b9ab41181ba"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_c65e8daf2e2a"
+      ],
+      "structure_aware": [
+        "sa_1961522f5b08"
+      ]
+    },
     "source_document": "AtI-annual-report-2014.pdf",
     "domain_tag": "financial"
   },
@@ -91,9 +138,14 @@
     "question_id": "gt_010",
     "question": "What is ChipLingo and what are its three primary stages of training?",
     "ground_truth_answer": "ChipLingo is a systematic training pipeline for domain-adapted large language models (LLMs) specifically tailored to Electronic Design Automation (EDA) scenarios. Its proposed pipeline consists of three stages: (1) constructing domain-specific corpora through multi-source data curation and question-answering (QA) augmentation; (2) a domain-adaptive pretraining phase comparing different parameter training strategies; and (3) instruction alignment and RAG scenario training to enhance the model's ability to leverage external knowledge.",
-    "ground_truth_chunk_ids": [
-      "5c4e05e2-2677-4e8e-8734-b6fc104257e2"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_6a286d20f632"
+      ],
+      "structure_aware": [
+        "sa_6a286d20f632"
+      ]
+    },
     "source_document": "2604.27415v1.pdf",
     "domain_tag": "academic"
   },
@@ -101,9 +153,14 @@
     "question_id": "gt_011",
     "question": "What accuracy did ChipLingo-32B achieve on the EDA-Bench benchmark?",
     "ground_truth_answer": "Experimental results provided in the study show that ChipLingo-32B achieved 70.02% accuracy on the EDA-Bench benchmark, approaching the performance of leading closed-source commercial models. This was compared to ChipLingo-8B, which achieved 59.7% accuracy.",
-    "ground_truth_chunk_ids": [
-      "61b99d04-fcf8-4e67-b910-30e8967e85cf"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_6a286d20f632"
+      ],
+      "structure_aware": [
+        "sa_6a286d20f632"
+      ]
+    },
     "source_document": "2604.27415v1.pdf",
     "domain_tag": "academic"
   },
@@ -111,9 +168,14 @@
     "question_id": "gt_012",
     "question": "In 'Hands-On Python' by Dr. Andrew Harrington, what is covered in section 1.11 of Chapter 1?",
     "ground_truth_answer": "In 'Hands-On Python' by Dr. Andrew Harrington, Section 1.11 of Chapter 1 (titled 'Beginning With Python') covers 'Defining Functions of your Own'. This follows sections on Input/Output and Dictionaries.",
-    "ground_truth_chunk_ids": [
-      "4852dd42-bdf2-4ebb-b9f5-74d8edd4f3d6"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_45eeb57bd180"
+      ],
+      "structure_aware": [
+        "sa_ccdc64573337"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -121,9 +183,14 @@
     "question_id": "gt_013",
     "question": "Which chapter in 'Hands-On Python' covers 'Dynamic Web Pages'?",
     "ground_truth_answer": "Chapter 4 of the 'Hands-On Python' tutorial is dedicated to 'Dynamic Web Pages'. It includes sub-sections on Web page Basics (4.1), Composing Web Pages in Python (4.2), and CGI - Dynamic Web Pages (4.3).",
-    "ground_truth_chunk_ids": [
-      "bc42a990-4e7d-438b-9dda-69e4bda6ee66"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_45eeb57bd180"
+      ],
+      "structure_aware": [
+        "sa_bcc4ba7d03bf"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -131,9 +198,14 @@
     "question_id": "gt_014",
     "question": "Which greenhouse gases are included in the FAOSTAT 'Emissions Totals' domain?",
     "ground_truth_answer": "The FAOSTAT 'Emissions Totals' domain includes methane (CH4), nitrous oxide (N2O), and carbon dioxide (CO2) emissions generated from agrifood systems and other economic sectors. It also encompasses aggregate fluorinated gases (F-gases) emissions used in industrial processes.",
-    "ground_truth_chunk_ids": [
-      "f070788f-4268-4508-a349-4633d3ec6bf4"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_811a8efce28c"
+      ],
+      "structure_aware": [
+        "sa_854c71b776c3"
+      ]
+    },
     "source_document": "FAO_EMSTOT.pdf",
     "domain_tag": "academic"
   },
@@ -141,9 +213,14 @@
     "question_id": "gt_015",
     "question": "What global warming potentials are used to compute CO2 equivalent units in the FAOSTAT emissions database?",
     "ground_truth_answer": "The FAOSTAT Emissions Totals domain computes CO2 equivalent (CO2eq) units using the global warming potentials (GWP) from the Intergovernmental Panel on Climate Change (IPCC) Fifth Assessment Report, known as AR5, released in 2014.",
-    "ground_truth_chunk_ids": [
-      "f070788f-4268-4508-a349-4633d3ec6bf4"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_811a8efce28c"
+      ],
+      "structure_aware": [
+        "sa_854c71b776c3"
+      ]
+    },
     "source_document": "FAO_EMSTOT.pdf",
     "domain_tag": "academic"
   },
@@ -151,9 +228,14 @@
     "question_id": "gt_016",
     "question": "What is the primary purpose of the CLEAR Water Dashboard?",
     "ground_truth_answer": "The primary purpose of the CLEAR Water Dashboard is to support Water teams in informing the standardized diagnostic framework for Climate and Economic Analyses of Resilience in Water (CLEAR Water) in Country Climate and Development Reports. It curates and assembles more than twenty global datasets from recognized institutions.",
-    "ground_truth_chunk_ids": [
-      "4fd2fb9f-5fd8-43ca-91f2-b782ac43c4db"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_649dd815bc69"
+      ],
+      "structure_aware": [
+        "sa_f222faab5335"
+      ]
+    },
     "source_document": "WB_CLEAR.pdf",
     "domain_tag": "technical"
   },
@@ -161,9 +243,14 @@
     "question_id": "gt_017",
     "question": "When was the report for 'Climate and Economic Analyses for Resilience in Water' (CLEAR Water) generated?",
     "ground_truth_answer": "The report for the CLEAR Water database was generated on August 27, 2025. The database version is listed as 1.0, with a version date of April 16, 2025.",
-    "ground_truth_chunk_ids": [
-      "c897d9ac-92fd-4184-bae7-73c195054201"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_649dd815bc69"
+      ],
+      "structure_aware": [
+        "sa_e38e7c9106b9"
+      ]
+    },
     "source_document": "WB_CLEAR.pdf",
     "domain_tag": "technical"
   },
@@ -171,19 +258,29 @@
     "question_id": "gt_018",
     "question": "Which date marked the end of the sixth year of implementation of the World Bank's Access to Information Policy?",
     "ground_truth_answer": "June 30, 2016, marked the end of the sixth year of implementation of the World Bank's Access to Information (AI) Policy. This milestone reflects several years of progress in the Bank's transparency and accountability agenda.",
-    "ground_truth_chunk_ids": [
-      "f4c647d6-149f-4ac3-b3b1-e35a881f5e16"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_6542cfab76b3"
+      ],
+      "structure_aware": [
+        "sa_6542cfab76b3"
+      ]
+    },
     "source_document": "Access-to-Information-2016-annual-report.pdf",
     "domain_tag": "financial"
   },
   {
     "question_id": "gt_019",
     "question": "What is the function of 'World Bank Group Finances' as described in the FY2016 report?",
-    "ground_truth_answer": "As described in the FY2016 report, 'World Bank Group Finances' is a platform that makes data related to the WBG\u00e2\u20ac\u2122s financials available to everyone in a social, interactive, visually compelling, and machine-readable format.",
-    "ground_truth_chunk_ids": [
-      "2fb5fc14-7dd1-4ce2-a8e8-a8fd8fa69b79"
-    ],
+    "ground_truth_answer": "As described in the FY2016 report, 'World Bank Group Finances' is a platform that makes data related to the WBGâ€™s financials available to everyone in a social, interactive, visually compelling, and machine-readable format.",
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_6542cfab76b3"
+      ],
+      "structure_aware": [
+        "sa_6542cfab76b3"
+      ]
+    },
     "source_document": "Access-to-Information-2016-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -191,9 +288,14 @@
     "question_id": "gt_020",
     "question": "Who is the President of the World Bank Group listed in the 2025 Annual Report?",
     "ground_truth_answer": "Ajay Banga is listed as the President of the World Bank Group and Chairman of the Board of Executive Directors in the 2025 Annual Report. He submitted the report to the Board of Governors along with the administrative budgets and audited financial statements.",
-    "ground_truth_chunk_ids": [
-      "328cac33-b539-48e6-9430-c902f0d61bd5"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_67dd0aebbf3e"
+      ],
+      "structure_aware": [
+        "sa_826142717001"
+      ]
+    },
     "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
     "domain_tag": "financial"
   },
@@ -201,9 +303,14 @@
     "question_id": "gt_021",
     "question": "What period is covered by the World Bank Group Annual Report 2025?",
     "ground_truth_answer": "The World Bank Group Annual Report 2025 covers the period beginning on July 1, 2024, and ending on June 30, 2025. It includes results from IBRD, IDA, IFC, MIGA, and ICSID.",
-    "ground_truth_chunk_ids": [
-      "3774ebce-5716-49df-849a-52804840c543"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_67dd0aebbf3e"
+      ],
+      "structure_aware": [
+        "sa_826142717001"
+      ]
+    },
     "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
     "domain_tag": "financial"
   },
@@ -211,9 +318,14 @@
     "question_id": "gt_022",
     "question": "Which retrieval strategy achieved the weakest contextual precision in the BioASQ benchmarking study?",
     "ground_truth_answer": "In the biomedical RAG study, Multi-Query Expansion produced the weakest contextual precision (0.671). The study suggests that naive query diversification introduced retrieval noise, which negatively impacted the signal-to-noise ratio in the retrieved results.",
-    "ground_truth_chunk_ids": [
-      "ea896fbc-5c23-49e7-a12e-5c30d1afbfd2"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_b6d6cb12b0f2"
+      ],
+      "structure_aware": [
+        "sa_cf9f29dbf4d4"
+      ]
+    },
     "source_document": "2605.02520v1.pdf",
     "domain_tag": "academic"
   },
@@ -221,9 +333,14 @@
     "question_id": "gt_023",
     "question": "How many available development datasets, indicators, and visualizations were cited in the FY23 ATI report?",
     "ground_truth_answer": "The FY23 Access to Information report cited over 15,700 available development datasets, indicators, and visualizations. This is coordinated by the Development Data Group, which maintains numerous macro, financial, and sector databases.",
-    "ground_truth_chunk_ids": [
-      "6dc33ff1-ffd5-44ba-bb87-c6ef34f3574f"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_1cff30362151"
+      ],
+      "structure_aware": [
+        "sa_3b9f2b2dd82f"
+      ]
+    },
     "source_document": "Access-to-Information-2023-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -231,9 +348,14 @@
     "question_id": "gt_024",
     "question": "Which section of the Python 3.7.0 tutorial discusses 'Coding Style'?",
     "ground_truth_answer": "Section 4.8 of the Python 3.7.0 tutorial is titled 'Intermezzo: Coding Style'. It provides guidance on maintaining a consistent and readable coding style, which is essential for collaborative Python development.",
-    "ground_truth_chunk_ids": [
-      "3ecd858e-a872-494d-b96c-221687a43eb6"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_615237f7abb7"
+      ],
+      "structure_aware": [
+        "sa_40d2367ade65"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -241,9 +363,14 @@
     "question_id": "gt_025",
     "question": "In the Python tutorial, what is the purpose of section 4.1 'if Statements'?",
     "ground_truth_answer": "Section 4.1 of the Python tutorial discusses 'if Statements', which are the primary control flow tool for conditional execution. They allow a program to execute a specific block of code only if a given condition is true, often followed by 'elif' and 'else' clauses.",
-    "ground_truth_chunk_ids": [
-      "8badc404-4fc5-45c3-b15e-ef828e429529"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_53e2801f9564"
+      ],
+      "structure_aware": [
+        "sa_1e93e3e543f3"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -251,9 +378,14 @@
     "question_id": "gt_026",
     "question": "What is the main reason why the African Development Bank approves historic health infrastructure strategy in February 2022?",
     "ground_truth_answer": "The ADB approved a historic health infrastructure strategy to improve healthcare outcomes and address the growing needs of Africa's population. The strategy aimed to provide comprehensive health services, strengthen health systems, and increase access to healthcare facilities.",
-    "ground_truth_chunk_ids": [
-      "59fe2b04-c775-4137-bfb4-3d6a26e2380c"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_93b4107731c2"
+      ],
+      "structure_aware": [
+        "sa_1c59214426cb"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -261,9 +393,14 @@
     "question_id": "gt_027",
     "question": "The Bank's decision to restrict access to the Grant Agreement and GFRs is based on the likelihood of harm resulting from disclosure.",
     "ground_truth_answer": "the bank decided to exercise its prerogative to restrict access. the likelihood of harm resulting from disclosure was high",
-    "ground_truth_chunk_ids": [
-      "1dc3b02d-a5ac-43d2-842e-3eff067d5ba1"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_9c83cb217fc0"
+      ],
+      "structure_aware": [
+        "sa_4db88030b641"
+      ]
+    },
     "source_document": "AtI-annual-report-2012.pdf",
     "domain_tag": "financial"
   },
@@ -271,9 +408,14 @@
     "question_id": "gt_028",
     "question": "Can a standard that requires high certification for providers yield better health outcomes in aggregate than using highly trained professionals?",
     "ground_truth_answer": "Yes, expanding access to healthcare for the many using providers with less advanced credentials can lead to better health outcomes in the aggregate.",
-    "ground_truth_chunk_ids": [
-      "cf83b98e-64bb-4f61-8513-b2726a71abb5"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_2f7590abf08e"
+      ],
+      "structure_aware": [
+        "sa_36aed3bc0918"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -281,9 +423,14 @@
     "question_id": "gt_029",
     "question": "What is the specific context of government intervention in quality infrastructure changes with conformity assessment services?",
     "ground_truth_answer": "Need for government intervention in quality infrastructure changes with conformity assessment services is a growing concern due to increasing regulatory requirements and changing global market demands. As countries develop their quality infrastructure, the need for government intervention is becoming more apparent.",
-    "ground_truth_chunk_ids": [
-      "763ae696-16b2-4ead-bdc5-36ea64ce6810"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_ff522990f77c"
+      ],
+      "structure_aware": [
+        "sa_7bf21130ff06"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -291,9 +438,14 @@
     "question_id": "gt_030",
     "question": "What does the function s.count(sub) return?",
     "ground_truth_answer": "The function s.count(sub) returns the number of repetitions of the substring sub inside string s.",
-    "ground_truth_chunk_ids": [
-      "2f1f90a6-d027-4ea2-8f96-d7814764504a"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_9e97612ce37c"
+      ],
+      "structure_aware": [
+        "sa_77e293c50109"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -301,9 +453,14 @@
     "question_id": "gt_031",
     "question": "What is the main goal of the World Bank's Small States strategy?",
     "ground_truth_answer": "To support inclusive and resilient growth in small countries through innovative financing solutions and effective management.",
-    "ground_truth_chunk_ids": [
-      "c0f2fb65-1b10-465d-9386-7e2cf8c70f9f"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_2f7f347b3470"
+      ],
+      "structure_aware": [
+        "sa_7d73db2098af"
+      ]
+    },
     "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
     "domain_tag": "financial"
   },
@@ -311,9 +468,12 @@
     "question_id": "gt_032",
     "question": "Can you identify the captions associated with the images, tables, and forms in a poorly structured PDF document?",
     "ground_truth_answer": "['Image caption', 'Table header', 'Form description']",
-    "ground_truth_chunk_ids": [
-      "6bcf6d0a-4b2a-4b90-8b74-d5cabb5c2be0"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_f230f526faf1"
+      ],
+      "structure_aware": []
+    },
     "source_document": "2604.23276v1.pdf",
     "domain_tag": "academic"
   },
@@ -321,9 +481,14 @@
     "question_id": "gt_033",
     "question": "What specific unit within The World Bank handled 16 cases carried over from FY 2011 and 87 cases carried over from FY 2012 in FY 2013?",
     "ground_truth_answer": "InfoShop (ECR) and communications staff in COs.",
-    "ground_truth_chunk_ids": [
-      "790879b2-0b5c-4298-939e-a27b75542945"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_58515fd42de4"
+      ],
+      "structure_aware": [
+        "sa_da392aca95a5"
+      ]
+    },
     "source_document": "AtI-annual-report-2013.pdf",
     "domain_tag": "financial"
   },
@@ -331,19 +496,29 @@
     "question_id": "gt_034",
     "question": "How does Python's `insert` method work?",
     "ground_truth_answer": "When you use the `insert` method, a new element is added to the end of the list. The specified index becomes valid again.",
-    "ground_truth_chunk_ids": [
-      "09b9d9ba-739a-45fe-8650-daf5db66d89b"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_5c303b9e7592"
+      ],
+      "structure_aware": [
+        "sa_38707b258da9"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
   {
     "question_id": "gt_035",
     "question": "What type of data structure does the collections module use?",
-    "ground_truth_answer": "It uses a deque object that is like a list with faster appends and pops from the left side but slower lookups in the middle. These objects are well suited for implementing queues and breadth \ufb01rst tree searches: 11.6.",
-    "ground_truth_chunk_ids": [
-      "d175cf68-188f-4cf0-adb8-eb4e484d1641"
-    ],
+    "ground_truth_answer": "It uses a deque object that is like a list with faster appends and pops from the left side but slower lookups in the middle. These objects are well suited for implementing queues and breadth ﬁrst tree searches: 11.6.",
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_9057b439483a"
+      ],
+      "structure_aware": [
+        "sa_11fc590edc11"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -351,9 +526,14 @@
     "question_id": "gt_036",
     "question": "What are the age ranges of the children participating in the Center of aesthetic education (aesthetic, artistic, choreographic, academic vocal)?",
     "ground_truth_answer": "The center engages 234 children aged from 3 to 17 years old.",
-    "ground_truth_chunk_ids": [
-      "a563ffff-9882-4e21-8701-f59ae0e4515a"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_3fc56ffdef44"
+      ],
+      "structure_aware": [
+        "sa_c7cd5061fed0"
+      ]
+    },
     "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
     "domain_tag": "technical"
   },
@@ -361,9 +541,12 @@
     "question_id": "gt_037",
     "question": "What is the result of the following delete operation?",
     "ground_truth_answer": "The list remains unchanged after a deletion operation.",
-    "ground_truth_chunk_ids": [
-      "2a095963-6a77-42c5-9aa1-305682069d9b"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_964a134b2cfc"
+      ],
+      "structure_aware": []
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -371,9 +554,12 @@
     "question_id": "gt_038",
     "question": "What software do I use to create static web pages?",
     "ground_truth_answer": "Kompozer",
-    "ground_truth_chunk_ids": [
-      "2fa23228-9c4e-423d-9360-52be67acf8e0"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_45eeb57bd180"
+      ],
+      "structure_aware": []
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -381,9 +567,14 @@
     "question_id": "gt_039",
     "question": "What is the name of the study that investigated mortality rates in low-quality health systems during the Universal Health Coverage era?",
     "ground_truth_answer": "Mortality Due to Low-Quality Health Systems in the Universal Health Coverage Era: A Systematic Analysis of Amenable Deaths in 137 Countries.",
-    "ground_truth_chunk_ids": [
-      "2bd37f84-3d33-4ebd-92ce-e12d361a4932"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_703f536eff51"
+      ],
+      "structure_aware": [
+        "sa_943325075825"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -391,9 +582,14 @@
     "question_id": "gt_040",
     "question": "What are the most widely accepted standards for managing risks in metrology?",
     "ground_truth_answer": "The International Organization for Standardization (ISO) and the International Electrotechnical Commission (IEC) have developed several frameworks and guidelines to help organizations manage risks in metrology. For example, ISO/IEC 17025:2018 provides a framework for managing risks associated with laboratory testing and calibration.",
-    "ground_truth_chunk_ids": [
-      "f3988696-47c1-479f-9290-f256cc90b7bb"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_76eda9ca0b9d"
+      ],
+      "structure_aware": [
+        "sa_e1e5b25e602c"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -401,9 +597,14 @@
     "question_id": "gt_041",
     "question": "What is the relationship between climate-related standards and disaster costs among higher-income countries compared to lower-income countries?",
     "ground_truth_answer": "The number of climate-related standards has grown in higher-income countries, and disaster costs have affected that number more than in lower-income countries. In particular, higher-income countries tend to have a larger share of climate-related standards in their energy sectors due to the importance of carbon pricing and regulatory frameworks.",
-    "ground_truth_chunk_ids": [
-      "d9bd50a4-87af-4910-b0e1-9674176679b1"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_caf3a014d75b"
+      ],
+      "structure_aware": [
+        "sa_7f4bf27ae828"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -411,9 +612,14 @@
     "question_id": "gt_042",
     "question": "What does the installer do after it finishes copying files?",
     "ground_truth_answer": "After the installer finishes copying files, click Close to close the installer window.",
-    "ground_truth_chunk_ids": [
-      "d45bff83-6955-422f-b5cd-2f1bb88d3fcd"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_68a4007eacc0"
+      ],
+      "structure_aware": [
+        "sa_d18f0b773403"
+      ]
+    },
     "source_document": "Python-tutorial-pdf3.pdf",
     "domain_tag": "technical"
   },
@@ -421,9 +627,14 @@
     "question_id": "gt_043",
     "question": "How can open budgets support international development aid transparency initiatives?",
     "ground_truth_answer": "To help them become more open, supporting initiatives in areas such as open budgets and open contracting. In addition, we partner with countries in implementing international development aid transparency initiatives. Governments can use open aid data to integrate aid resources into their national budgets, and to better coordinate donor interventions within their borders.",
-    "ground_truth_chunk_ids": [
-      "0dbefa32-875a-43ac-9ca5-b9b37b34d54e"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_764d10ca0710"
+      ],
+      "structure_aware": [
+        "sa_077c96694a4f"
+      ]
+    },
     "source_document": "AtI-annual-report-2013.pdf",
     "domain_tag": "financial"
   },
@@ -431,9 +642,14 @@
     "question_id": "gt_044",
     "question": "How can regulations be designed to increase quality at the aggregate level while reducing negative externalities in production processes?",
     "ground_truth_answer": "Regulations should be rigorous assessments of regulatory impact, which involves analyzing the trade-offs involved and identifying areas for improvement. This can be achieved through technical assistance and capacity-building support for developing countries.",
-    "ground_truth_chunk_ids": [
-      "402280c6-826a-4e53-ab96-0a88b9e9dd6b"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_85bdd7a45185"
+      ],
+      "structure_aware": [
+        "sa_778d198efec9"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -441,9 +657,14 @@
     "question_id": "gt_045",
     "question": "What are the financial resources available to The World Bank through its development programs?",
     "ground_truth_answer": "The World Bank provides a variety of financial resources, including loans and grants, to support its development programs. These resources can be used to finance infrastructure projects, such as roads and bridges, or to support economic growth and poverty reduction initiatives. Additionally, the World Bank offers technical assistance and capacity-building programs to help recipient countries build their own financial management capacity.",
-    "ground_truth_chunk_ids": [
-      "bc685d47-da5c-4c45-bced-dd0cf272fc25"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_79a461d0ebe3"
+      ],
+      "structure_aware": [
+        "sa_a83286ae33e7"
+      ]
+    },
     "source_document": "AtI-annual-report-2013.pdf",
     "domain_tag": "financial"
   },
@@ -451,9 +672,14 @@
     "question_id": "gt_046",
     "question": "What pages were used in a study on cultural bias in large language models?",
     "ground_truth_answer": "Having beer after prayer? measuring cultural bias in large language models. Curran Associates, Inc.. Tarek Naous, Michael J Ryan, Alan Ritter, and Wei Xu. 2024",
-    "ground_truth_chunk_ids": [
-      "d6093992-fedb-42f0-9bd3-16659da189c3"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_6d016cd49fac"
+      ],
+      "structure_aware": [
+        "sa_0ed47bba047c"
+      ]
+    },
     "source_document": "2605.02601v1.pdf",
     "domain_tag": "academic"
   },
@@ -461,9 +687,14 @@
     "question_id": "gt_047",
     "question": "What is the purpose of the Windows-1252 encoding declaration in Python 3.7.0 source code?",
     "ground_truth_answer": "To specify the character encoding used in the file, making it compatible with different operating systems.",
-    "ground_truth_chunk_ids": [
-      "f6e4aaeb-20c8-426c-a125-d926fd1b4975"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_87380a75b9cd"
+      ],
+      "structure_aware": [
+        "sa_a6408a31df08"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -471,9 +702,12 @@
     "question_id": "gt_048",
     "question": "What percentage of requests from Europe and Central Asia were directed towards regional information?",
     "ground_truth_answer": "31%",
-    "ground_truth_chunk_ids": [
-      "8f370a4d-e33d-46b6-96cc-ccb53cf399b1"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_4f86a779a7b7"
+      ],
+      "structure_aware": []
+    },
     "source_document": "AtI-annual-report-2013.pdf",
     "domain_tag": "financial"
   },
@@ -481,9 +715,14 @@
     "question_id": "gt_049",
     "question": "What are the key goals and objectives of the Charities SORP Committee?",
     "ground_truth_answer": "The primary goal of the committee is to promote transparency and accountability in the charitable sector, ensuring that donations are used effectively for the benefit of the public. The committee's objectives include reviewing and revising existing regulations, establishing new ones, and providing guidance on best practices for charities.",
-    "ground_truth_chunk_ids": [
-      "01d93807-e6cc-453d-b999-045a4c7cf0d8"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_649e6126e6d2"
+      ],
+      "structure_aware": [
+        "sa_4cf9de854ec1"
+      ]
+    },
     "source_document": "ce82ee69892b64d25e45e3f2e0968fb1e7aa9e43c6c01e03832b4d64ee812906.docx",
     "domain_tag": "technical"
   },
@@ -491,9 +730,14 @@
     "question_id": "gt_050",
     "question": "What are the regulations that developed countries have in place due to their exports, specifically those related to nature?",
     "ground_truth_answer": "regulations: Export regulations vary by country, but developed nations often have strict rules for importing food and feed into the EU and US markets. These regulations can include requirements for labeling, testing, and certification of products., countries: The UK, Germany, and France are among the countries with well-established export regulations. Other countries, such as the US and Canada, also have regulations in place but may be more flexible than their European counterparts., nature: The nature of these exports can impact the quality and safety of products, making it essential to comply with regulations., exports:",
-    "ground_truth_chunk_ids": [
-      "8388909c-5aa2-4d73-98ee-ad9e588b2c9b"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_ddd4cf98de2f"
+      ],
+      "structure_aware": [
+        "sa_84d7aca25117"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -501,19 +745,29 @@
     "question_id": "gt_051",
     "question": "What type of finders are used in Python?",
     "ground_truth_answer": "Two types: meta path finders and path entry finders.",
-    "ground_truth_chunk_ids": [
-      "9ec3540d-ca79-4603-b002-0800fa8ab88d"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_38b109e8dab7"
+      ],
+      "structure_aware": [
+        "sa_38707b258da9"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
   {
     "question_id": "gt_052",
     "question": "What is the purpose of the Digital Vault in the Bank's operations?",
-    "ground_truth_answer": "The Digital Vault is a system to manage and preserve the Bank\u2019s digital assets, ensuring security, integrity, and accessibility.",
-    "ground_truth_chunk_ids": [
-      "58357f26-45b3-405f-bb62-7403072f7a8a"
-    ],
+    "ground_truth_answer": "The Digital Vault is a system to manage and preserve the Bank’s digital assets, ensuring security, integrity, and accessibility.",
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_3a59abcae879"
+      ],
+      "structure_aware": [
+        "sa_04f3ee4cec79"
+      ]
+    },
     "source_document": "WBG-A2I-2019-annual-report.pdf",
     "domain_tag": "financial"
   },
@@ -521,9 +775,14 @@
     "question_id": "gt_053",
     "question": "What is the optimal number of standards for global fisheries sustainability?",
     "ground_truth_answer": "Determining the right number of standards is a complex issue that depends on various factors, including the type of standard, its complexity, and the level of international cooperation. While some standards may be beneficial in promoting sustainability, others may not contribute significantly to improved performance. For instance, voluntary standards like those for food safety or labor standards can be effective in different contexts, but their impact may vary depending on the specific industry or region. On the other hand, rigid sustainability regulations might be more effective in certain sectors, such as technology, where speed and innovation are crucial. However, excessive fragmentation can lead to confusion among consumers and create challenges for regulatory frameworks.",
-    "ground_truth_chunk_ids": [
-      "23e8f8b2-e60e-47a7-81e8-d4ba46d1638d"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_115e85fc7c14"
+      ],
+      "structure_aware": [
+        "sa_9caeecfb36cd"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -531,9 +790,14 @@
     "question_id": "gt_054",
     "question": "What is the impact on nonprogram farmers' earnings compared to those who adopt standards?",
     "ground_truth_answer": "A negative impact was found, with studies indicating that nonstatistically significant impacts were observed in firms using an economic framework.",
-    "ground_truth_chunk_ids": [
-      "e7881fa9-b8be-43b9-a3e3-ad5bb44c8198"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_598b494e3c80"
+      ],
+      "structure_aware": [
+        "sa_9499c8ef695e"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -541,9 +805,12 @@
     "question_id": "gt_055",
     "question": "What is the main purpose of the Federal Migraton Service (U.F.M.S.) - 1199 services?",
     "ground_truth_answer": "The primary goal of the U.S. Citizenship and Immigration Services (USCIS) office within the Federatl Migraton Service is to facilitate the naturalization and citizenship process for eligible individuals who meet specific requirements.",
-    "ground_truth_chunk_ids": [
-      "b20ebe20-2e17-49b5-9eac-7a8ff169768d"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_7853e120c6ee"
+      ],
+      "structure_aware": []
+    },
     "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
     "domain_tag": "technical"
   },
@@ -551,9 +818,14 @@
     "question_id": "gt_056",
     "question": "What was the significance of China's accession to the World Trade Organization in 2001?",
     "ground_truth_answer": "China's accession to the WTO marked a turning point and accelerated its economic transformation, shifting the country from alignment toward active participation in standards development and indigenous innovation, with centralization of functions providing stronger governance.",
-    "ground_truth_chunk_ids": [
-      "73d1be9e-e053-4d14-b4f9-4572c3572e96"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_7b99bae3e802"
+      ],
+      "structure_aware": [
+        "sa_1202472f44a3"
+      ]
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -561,9 +833,12 @@
     "question_id": "gt_057",
     "question": "What is the purpose of the call in this context?",
     "ground_truth_answer": "The purpose of the call is to initiate a specific task or operation within the system, such as sending an email or performing a file transfer.",
-    "ground_truth_chunk_ids": [
-      "b5600867-d13b-4f5b-b753-17bb6153230a"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_1e8af299b3d1"
+      ],
+      "structure_aware": []
+    },
     "source_document": "b987f9cad39adc500b43782f66e2fbf521e90ec510d6a3825100f9b6658bcf0f.docx",
     "domain_tag": "technical"
   },
@@ -571,9 +846,14 @@
     "question_id": "gt_058",
     "question": "What is the 'Information Provided by Member Countries or Third Parties in Confidence' exception under the AI Policy?",
     "ground_truth_answer": "The 'Information Provided by Member Countries or Third Parties in Confidence' exception recognizes that the Bank has an obligation to provide access to information listed in paragraphs 8-17 of the AI Policy, which set out the exceptions. In this specific case, the bank had denied access to the ERPA due to this exception.",
-    "ground_truth_chunk_ids": [
-      "50068762-7d96-4bbf-9f6f-e00657190e80"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_351c0467a388"
+      ],
+      "structure_aware": [
+        "sa_190152243da5"
+      ]
+    },
     "source_document": "AtI-annual-report-2013.pdf",
     "domain_tag": "financial"
   },
@@ -581,9 +861,12 @@
     "question_id": "gt_059",
     "question": "What is the primary objective of the organization's approach to cultural and youth policy?",
     "ground_truth_answer": "The main goal is to promote a healthy lifestyle among the population by organizing culturally-themed events, encouraging physical culture activities in urban areas, and implementing young policies.",
-    "ground_truth_chunk_ids": [
-      "97f8fe48-7846-4e2c-987d-1b21ff99a914"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_7853e120c6ee"
+      ],
+      "structure_aware": []
+    },
     "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
     "domain_tag": "technical"
   },
@@ -591,9 +874,14 @@
     "question_id": "gt_060",
     "question": "What is the primary purpose of the graphics package in Tkinter?",
     "ground_truth_answer": "The graphics package is built on an underlying graphics system, Tkinter, which provides a foundation for creating graphical user interfaces and visual displays.",
-    "ground_truth_chunk_ids": [
-      "0c098524-c35e-46e9-8ed5-374a830cdb87"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_30ebd92672cd"
+      ],
+      "structure_aware": [
+        "sa_9654e3a7a872"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -601,9 +889,14 @@
     "question_id": "gt_061",
     "question": "What is the role of ICSID in facilitating investment dispute settlement?",
     "ground_truth_answer": "ICSID plays a leading global forum for resolving disputes between investors and States, providing technical assistance to State representatives and investors on important aspects to include in investment contracts.",
-    "ground_truth_chunk_ids": [
-      "87f596b1-ee60-410c-8848-bd101ca5af36"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_5113ec10502b"
+      ],
+      "structure_aware": [
+        "sa_6cf77a08b2aa"
+      ]
+    },
     "source_document": "worldbankSECBOS-8b71cac3-074c-43c1-ac8c-c3b5fc34cb5b.pdf",
     "domain_tag": "financial"
   },
@@ -611,9 +904,12 @@
     "question_id": "gt_062",
     "question": "What industry is led by Herbert Hoover and issued Waste in Industry reports?",
     "ground_truth_answer": "Waste in Industry",
-    "ground_truth_chunk_ids": [
-      "70b052f0-ec5b-4729-90e3-9991673124ea"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_2c286944d819"
+      ],
+      "structure_aware": []
+    },
     "source_document": "worldbankP505272-3c838d61-08f9-41ac-a199-59990baf9b6b.pdf",
     "domain_tag": "financial"
   },
@@ -621,9 +917,14 @@
     "question_id": "gt_063",
     "question": "What is the meaning of this string?",
     "ground_truth_answer": "The string represents a formatted multi-line string with syntax highlighting enabled.",
-    "ground_truth_chunk_ids": [
-      "f21a7d3b-c1ed-4588-bba4-747a6da87a48"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_9827d2a47dc2"
+      ],
+      "structure_aware": [
+        "sa_025debb1f411"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -631,9 +932,12 @@
     "question_id": "gt_064",
     "question": "What is the main budgetary policy for managing foreign investment in Russia?",
     "ground_truth_answer": "The Russian government has implemented a range of measures to attract foreign investment, including reducing taxes and regulations, increasing the availability of state-owned assets, and creating a favorable business environment. These efforts aim to promote economic growth, reduce dependence on domestic resources, and increase competitiveness in the global market.",
-    "ground_truth_chunk_ids": [
-      "47543771-9327-4619-b0aa-5c57c38b2dac"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_7853e120c6ee"
+      ],
+      "structure_aware": []
+    },
     "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
     "domain_tag": "technical"
   },
@@ -641,9 +945,14 @@
     "question_id": "gt_065",
     "question": "What is the syntax for using a file-like object in Python?",
     "ground_truth_answer": "The syntax for using a file-like object in Python is `open()` function. The `open()` function returns a file object which can be used to read and write files.",
-    "ground_truth_chunk_ids": [
-      "8a4c1dfc-e8ac-436d-924f-9c25c2d20451"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_13aaa45e2e20"
+      ],
+      "structure_aware": [
+        "sa_e8ab9b8e519c"
+      ]
+    },
     "source_document": "Python-tutorial-pdf1.pdf",
     "domain_tag": "technical"
   },
@@ -651,9 +960,14 @@
     "question_id": "gt_066",
     "question": "what integer division problem does quotient.py print?",
     "ground_truth_answer": "The quotient of 14 and 3 is 4 with a remainder of 2.",
-    "ground_truth_chunk_ids": [
-      "67f023b4-587e-425a-92e4-434e68a03918"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_8ad35d8251a0"
+      ],
+      "structure_aware": [
+        "sa_1894810c5c4e"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   },
@@ -661,9 +975,12 @@
     "question_id": "gt_067",
     "question": "What percentage of the workforce in manufacturing earns an income that is higher than $1,023 per year",
     "ground_truth_answer": "$1,023 is the average annual salary for a production worker",
-    "ground_truth_chunk_ids": [
-      "db8b1031-a825-4c3d-b535-e58ce3986432"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_7853e120c6ee"
+      ],
+      "structure_aware": []
+    },
     "source_document": "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
     "domain_tag": "technical"
   },
@@ -671,9 +988,14 @@
     "question_id": "gt_068",
     "question": "How to animate elementary graphics objects like faces in Python?",
     "ground_truth_answer": "animate elementary graphics objects like faces in Python. Move all shapes in shapeList by (dx, dy).",
-    "ground_truth_chunk_ids": [
-      "ac9069a2-a08c-407b-b206-2fad5a5c237e"
-    ],
+    "ground_truth_chunk_ids": {
+      "naive": [
+        "naive_94a08869bcc4"
+      ],
+      "structure_aware": [
+        "sa_d279a0e337e6"
+      ]
+    },
     "source_document": "Python-tutorial-pdf2.pdf",
     "domain_tag": "technical"
   }

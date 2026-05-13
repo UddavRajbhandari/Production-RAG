@@ -103,12 +103,43 @@ class LLMClient:
         requested_provider = str(self.config.get("llm.provider", "auto"))
         profiles = cast(dict[str, Any], self.config.get("llm.profiles", {}))
 
+        # Always initialize Ollama as fallback (even if not selected)
+        ollama_profile = profiles.get("ollama")
+        if ollama_profile:
+            url = ollama_profile.get("url", "http://localhost:11434/api/generate")
+            try:
+                tags_url = url.replace("/api/generate", "/api/tags")
+                resp = requests.get(tags_url, timeout=2)
+                if resp.status_code == 200:
+                    self._ollama_url = url
+                    self._ollama_model = ollama_profile.get("model", "llama3")
+                    logger.info(f"LLM Client: Ollama available as fallback at {url}")
+            except Exception:
+                logger.debug(f"Ollama not available at {url}")
+
         if requested_provider == "auto":
-            # Priority-based auto-detection
-            priority_list = ["groq", "openai", "openrouter", "huggingface", "ollama"]
+            # Priority-based auto-detection (skip disabled/working profiles)
+            priority_list = [
+                "groq",
+                "openai",
+                "openrouter",
+            ]  # HuggingFace disabled for now
             for profile_name in priority_list:
-                if self._try_init_profile(profile_name, profiles.get(profile_name)):
+                profile = profiles.get(profile_name)
+                # Skip if disabled in comments or missing
+                if (
+                    profile
+                    and profile.get("type") != "disabled"
+                    and self._try_init_profile(profile_name, profile)
+                ):
                     return
+
+            # If API providers fail, use Ollama fallback
+            if hasattr(self, "_ollama_url") and self._ollama_url:
+                self.provider = "ollama"
+                self.active_profile = "ollama"
+                logger.info("LLM Client: Using Ollama fallback")
+                return
 
             # If all else fails, use a fallback error state
             logger.critical("No valid LLM providers detected. Set an API key in .env")
@@ -183,27 +214,69 @@ class LLMClient:
         temperature: float = 0.0,
         custom_model: str | None = None,
     ) -> LLMResponse:
-        """Generates a response using the active provider."""
-        if not self.circuit_breaker.can_proceed():
-            return LLMResponse("", {}, 0.0, False, "Circuit breaker open")
+        """Generates a response with automatic fallback between providers."""
+        # Verify API key is still valid before trying API provider
+        profiles = cast(dict[str, Any], self.config.get("llm.profiles", {}))
+        active_profile = profiles.get(self.active_profile)
+        api_key_valid = False
+        if active_profile and active_profile.get("type") == "api":
+            env_key = active_profile.get("env_key", "")
+            api_key_valid = bool(os.getenv(env_key, ""))
 
-        if self.provider == "api":
+        # Try API provider first (if set and key still valid)
+        if (
+            self.provider == "api"
+            and api_key_valid
+            and self.circuit_breaker.can_proceed()
+        ):
             result = self._api_client.generate(
                 prompt, format_json, temperature, custom_model
             )
             if result["success"]:
                 self.circuit_breaker.record_success()
-            else:
-                self.circuit_breaker.record_failure()
-            return LLMResponse(
-                text=result["text"],
-                raw_response=result["raw_response"],
-                latency_ms=result["latency_ms"],
-                success=result["success"],
-                error=result["error"],
-            )
-        else:
+                return LLMResponse(
+                    text=result["text"],
+                    raw_response=result["raw_response"],
+                    latency_ms=result["latency_ms"],
+                    success=True,
+                    error=None,
+                )
+
+            # API failed - record failure
+            self.circuit_breaker.record_failure()
+            logger.warning(f"API failed: {result.get('error')}")
+
+            # Try other API profiles before falling back to Ollama
+            profiles = cast(dict[str, Any], self.config.get("llm.profiles", {}))
+            for profile_name in ["openai", "openrouter"]:  # HuggingFace disabled
+                profile = profiles.get(profile_name)
+                if (
+                    profile
+                    and profile_name != self.active_profile
+                    and self._try_init_profile(profile_name, profile)
+                ):
+                    logger.info(f"Trying fallback: {profile_name}")
+                    result = self._api_client.generate(
+                        prompt, format_json, temperature, custom_model
+                    )
+                    if result["success"]:
+                        self.circuit_breaker.record_success()
+                        return LLMResponse(
+                            text=result["text"],
+                            raw_response=result["raw_response"],
+                            latency_ms=result["latency_ms"],
+                            success=True,
+                            error=None,
+                        )
+                    logger.warning(f"Fallback {profile_name} also failed")
+
+        # Fallback to Ollama
+        if hasattr(self, "_ollama_url") and self._ollama_url:
+            logger.info("Using Ollama fallback")
             return self._generate_ollama(prompt, format_json, temperature, custom_model)
+
+        # No providers available
+        return LLMResponse("", {}, 0.0, False, "All providers failed")
 
     def _generate_ollama(
         self,
@@ -226,9 +299,11 @@ class LLMClient:
         last_error = None
         for attempt in range(self.max_retries):
             start_time = time.perf_counter()
+            # Use longer timeout for Ollama (30 minutes for CPU inference)
+            ollama_timeout = 1800
             try:
                 response = requests.post(
-                    self._ollama_url, json=payload, timeout=self.timeout
+                    self._ollama_url, json=payload, timeout=ollama_timeout
                 )
                 response.raise_for_status()
                 result = response.json()

@@ -46,8 +46,12 @@ def map_track_b() -> None:
                 if len(mapped_ids) >= 1:
                     break
 
-        pair["ground_truth_chunk_ids"] = mapped_ids
-        print(f"  -> Mapped to: {mapped_ids}")
+        # Update ground truth entry with dual IDs
+        pair["ground_truth_chunk_ids"] = {
+            "naive": mapped_ids,
+            "structure_aware": mapped_ids,  # Same IDs for now
+        }
+        print(f"  -> Mapped to naive: {mapped_ids}")
 
     # 4. Save Updated Ground Truth
     with open(gt_path, "w") as f:

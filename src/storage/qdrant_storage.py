@@ -9,6 +9,7 @@ Changes from v1:
 - search() method added for Phase 3 round-trip testing
 """
 
+import hashlib
 import logging
 import os
 import uuid
@@ -36,6 +37,13 @@ class QdrantStorage:
         self.collection_name = q_config["collection_name"]
         self.vector_size = q_config["vector_size"]
         self.distance = q_config["distance"]
+
+        # Auto-append chunker suffix for Phase 6 iteration comparison
+        # e.g., "production_rag_v1" -> "production_rag_v1_naive"
+        if q_config.get("use_chunker_suffix", True):
+            ing = self.config.get("ingestion", {})
+            chunker_type = ing.get("chunker_type", "structure_aware")
+            self.collection_name = f"{self.collection_name}_{chunker_type}"
 
         self.client = self._connect(q_config)
 
@@ -147,14 +155,19 @@ class QdrantStorage:
     def _validated_uuid(raw_id: str) -> str:
         """
         Confirms raw_id is a valid UUID string and returns it in canonical form.
+        Handles deterministic IDs (like sa_xxx, naive_xxx) by converting to UUID.
 
-        Raises ValueError with a clear message if the ID is not a valid UUID.
-        This catches problems early — before Qdrant rejects the batch silently.
+        Raises ValueError with a clear message if the ID cannot be converted.
         """
         try:
             return str(uuid.UUID(str(raw_id)))
-        except (ValueError, AttributeError) as exc:
+        except (ValueError, AttributeError):
+            # Handle deterministic chunk IDs (sa_xxx, naive_xxx format)
+            # Convert to a valid UUID by hashing the string
+            if raw_id.startswith(("sa_", "naive_")):
+                hash_hex = hashlib.sha256(raw_id.encode()).hexdigest()[:32]
+                return str(uuid.UUID(hash_hex))
             raise ValueError(
                 f"Node ID '{raw_id}' is not a valid UUID. Qdrant requires UUID-format "
-                f"strings or unsigned integers as point IDs. Original error: {exc}"
-            ) from exc
+                f"strings or unsigned integers as point IDs."
+            ) from None

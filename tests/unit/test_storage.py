@@ -3,8 +3,8 @@ import os
 from llama_index.core.schema import TextNode
 from sqlalchemy import inspect
 
-from src.storage.bm25_index import BM25Storage
-from src.storage.neon_db import NeonStorage
+from src.storage.bm25_storage import BM25Storage
+from src.storage.neon_storage import NeonStorage
 
 
 def test_bm25_build_and_search() -> None:

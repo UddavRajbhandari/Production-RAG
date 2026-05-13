@@ -92,7 +92,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    nodes_path = "data/processed/chunks/ingested_nodes.pkl"
+    nodes_path = "data/processed/chunks/ingested_nodes_structure_aware.pkl"
     gt_path = "data/ground_truth/ground_truth.json"
 
     if not os.path.exists(nodes_path):
@@ -138,7 +138,10 @@ def main() -> None:
                         ),
                         "question": q,
                         "ground_truth_answer": a,
-                        "ground_truth_chunk_ids": [node.id_],
+                        "ground_truth_chunk_ids": {
+                            "naive": [node.id_],
+                            "structure_aware": [node.id_],
+                        },
                         "source_document": node.metadata.get("source_file"),
                         "domain_tag": node.metadata.get("department", "general"),
                     }

@@ -18,9 +18,9 @@ import yaml
 from llama_index.core.schema import TextNode
 from sentence_transformers import SentenceTransformer
 
-from src.storage.bm25_index import BM25Storage
-from src.storage.neon_db import NeonStorage  # FIX: was src.retrieval.neon_db
-from src.storage.qdrant_client import QdrantStorage
+from src.storage.bm25_storage import BM25Storage
+from src.storage.neon_storage import NeonStorage  # FIX: was src.retrieval.neon_db
+from src.storage.qdrant_storage import QdrantStorage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -132,7 +132,7 @@ def verify_backends(
     # Neon: confirm row count matches node count
     from sqlalchemy import func, select
 
-    from src.storage.neon_db import ChunkMetadata
+    from src.storage.neon_storage import ChunkMetadata
 
     session = neon.Session()
     try:
@@ -150,14 +150,14 @@ def verify_backends(
 
 
 def main() -> None:
-    nodes_path = "data/processed/chunks/ingested_nodes.pkl"
-    nodes = load_nodes(nodes_path)
-
-    # Read model name from config
+    # Read model name and chunker type from config
     with open("config/settings.yaml") as f:
         config = yaml.safe_load(f)
     model_name = config["models"]["embedding"]
+    chunker_type = config.get("ingestion", {}).get("chunker_type", "structure_aware")
 
+    nodes_path = f"data/processed/chunks/ingested_nodes_{chunker_type}.pkl"
+    nodes = load_nodes(nodes_path)
     # 1. Embeddings
     embeddings, resumed = generate_embeddings(nodes, model_name)
 
