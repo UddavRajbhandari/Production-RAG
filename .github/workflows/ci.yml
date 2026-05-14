@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, feat/**]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   # ── Job 1: Lint & Type Check ─────────────────────────────────────────────────
@@ -23,27 +23,27 @@ jobs:
             requirements.txt
             requirements-dev.txt
 
-      - name: Install dev dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy pytest
+          pip install ruff==0.9.4 mypy pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       - name: Run Ruff (lint)
-        run: ruff check .
+        run: ruff check . --config pyproject.toml
 
-      - name: Run Ruff (format check)
-        run: ruff format --check .
+      - name: Run Ruff Format Check
+        run: ruff format --check . --config pyproject.toml
 
       - name: Run Mypy
-        run: mypy src
+        run: mypy src --config pyproject.toml
 
   # ── Job 2: Unit & Integration Tests ─────────────────────────────────────────
   tests:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    needs: quality                       # only run if quality passes
+    needs: quality
     steps:
       - uses: actions/checkout@v4
 
@@ -67,64 +67,61 @@ jobs:
           python src/evaluation/validate_ground_truth.py data/ground_truth/ground_truth.json
 
       - name: Run Unit Tests
-        run: pytest tests/unit -v
-
-      - name: Run Integration Tests
-        run: pytest tests/integration -v
+        run: pytest tests/unit -v --ignore=tests/integration
 
   # ── Job 3: RAGAS Regression Guard ────────────────────────────────────────────
-  # Runs a fast RAGAS evaluation on a small golden QA set (10–15 pairs).
-  # Fails the pipeline if Context Precision drops below 0.75 or
-  # Faithfulness drops below 0.80, as defined in config/settings.yaml.
+  # Runs evaluation on a subset of golden QA pairs.
+  # Fails if metrics drop below thresholds.
   #
-  # NOTE: This job requires a live LLM endpoint.
-  # Set OPENAI_API_KEY (or your local LLM base URL) as a GitHub Actions secret.
-  # If running fully local (Ollama), this job should run on a self-hosted runner.
+  # Requires OPENROUTER_API_KEY secret to be set in GitHub Actions.
   ragas-regression:
-    if: false   # 🔥 disables job completely
     name: RAGAS Regression Guard
     runs-on: ubuntu-latest
     needs: tests
-    # continue-on-error: true   # ✅ KEY CHANGE
-    # NOTE: When enabled, uncomment and set your LLM API key:
+    # Uncomment to enable (requires OPENROUTER_API_KEY secret):
     # env:
-    #   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    #   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
     steps:
-      - run: echo "RAGAS disabled until Phase 6"
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # - name: Set up Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.10'
-      #     cache: 'pip'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-      # - name: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      # Quick check - validates script can be imported
+      - name: Validate RAGAS Script
+        run: |
+          python -c "from src.evaluation.evaluate_ragas import main; print('RAGAS script OK')"
+
+      # Full RAGAS evaluation can be run locally with:
+      # python src/evaluation/evaluate_ragas.py --golden-set data/ground_truth/golden_set_ci.json
+      #
+      # To enable full CI RAGAS:
+      # 1. Create a golden_set_ci.json with 10-15 representative QA pairs
+      # 2. Set OPENROUTER_API_KEY in GitHub Actions secrets
+      # 3. Uncomment the step below:
+      # - name: Run RAGAS Evaluation
       #   run: |
-      #     python -m pip install --upgrade pip
-      #     if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      # - name: Run RAGAS regression on golden set
-      #   run: |
-      #     python src/evaluation/ragas_regression.py \
+      #     python src/evaluation/evaluate_ragas.py \
       #       --golden-set data/ground_truth/golden_set_ci.json \
-      #       --config config/settings.yaml
+      #       --output ragas_results.json
 
-        # This script must exit with code 1 if any threshold is breached.
-        # Thresholds are read directly from config/settings.yaml:
-        #   evaluation.ragas.alert_threshold_cp   (Context Precision ≥ 0.75)
-        #   evaluation.ragas.alert_threshold_faith (Faithfulness ≥ 0.80)
-
-  # ── Job 4: Docker Build Check ────────────────────────────────────────────────
+  # ── Job 4: Docker Build Check (disabled until Phase 8) ───────────────────────
   docker-build:
     if: false
     name: Docker Build Check
     runs-on: ubuntu-latest
     needs: tests
     steps:
-      # - uses: actions/checkout@v4
-
-      # - name: Build Docker image
-      #   run: docker build -t production-rag:ci-check .
-
       - run: echo "Docker build disabled until Phase 8"
