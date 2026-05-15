@@ -49,9 +49,9 @@ class QdrantStorage:
 
     def _connect(self, q_config: dict[str, Any]) -> QdrantClient:
         """
-        Attempts Docker connection first; falls back to local disk.
-        Logs the reason for any fallback — no silent swallowing.
+        Attempts Docker connection first; falls back to local disk only if Docker fails.
         """
+        # Try Docker connection first
         try:
             client = QdrantClient(host=q_config["host"], port=q_config["port"])
             client.get_collections()  # lightweight ping
@@ -66,10 +66,25 @@ class QdrantStorage:
                 "Docker Qdrant unavailable (%s). Falling back to local disk storage.",
                 exc,
             )
-            local_path = "storage/qdrant_data"
+
+        # Fallback to local disk only if Docker is truly unavailable
+        local_path = "storage/qdrant_data"
+
+        # Check if local path is already in use (Windows file locking)
+        try:
             os.makedirs(local_path, exist_ok=True)
+            client = QdrantClient(path=local_path)
+            client.get_collections()
             logger.info("Using local Qdrant path: %s", local_path)
-            return QdrantClient(path=local_path)
+            return client
+        except Exception as lock_exc:
+            logger.error(
+                "Local storage also unavailable (%s). Please start Qdrant or release the lock.",
+                lock_exc,
+            )
+            raise RuntimeError(
+                "Cannot connect to Qdrant. Start Docker Qdrant or release local storage lock."
+            ) from lock_exc
 
     def create_collection(self, force_recreate: bool = False) -> None:
         """Creates the vector collection. Optionally drops and recreates it."""
@@ -78,11 +93,7 @@ class QdrantStorage:
             logger.info("Dropped existing collection '%s'.", self.collection_name)
 
         if not self.client.collection_exists(self.collection_name):
-            distance = (
-                models.Distance.COSINE
-                if self.distance == "Cosine"
-                else models.Distance.EUCLID
-            )
+            distance = models.Distance.COSINE if self.distance == "Cosine" else models.Distance.EUCLID
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=models.VectorParams(
@@ -116,10 +127,7 @@ class QdrantStorage:
         reject them silently mid-batch.
         """
         if len(nodes) != len(embeddings):
-            raise ValueError(
-                f"nodes ({len(nodes)}) and embeddings ({len(embeddings)}) must have "
-                "the same length."
-            )
+            raise ValueError(f"nodes ({len(nodes)}) and embeddings ({len(embeddings)}) must have " "the same length.")
 
         all_points: list[models.PointStruct] = []
         for node, vector in zip(nodes, embeddings, strict=True):
