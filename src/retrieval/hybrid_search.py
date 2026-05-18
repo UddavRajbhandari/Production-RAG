@@ -64,15 +64,12 @@ class HybridRetriever:
         # Speed Optimization: Prune candidate pool for the reranker
         return fused_results[: self.rerank_pool_size]
 
-    def expand_context(
-        self, nodes: list[dict[str, Any]], window_size: int = 1
-    ) -> list[dict[str, Any]]:
+    def expand_context(self, nodes: list[dict[str, Any]], window_size: int = 1) -> list[dict[str, Any]]:
         """
         Returns a new list of result dicts enriched with surrounding chunk text.
         """
         node_lookup: dict[tuple[str, int], TextNode] = {
-            (n.metadata["source_file"], n.metadata["chunk_index"]): n
-            for n in self.bm25.nodes
+            (n.metadata["source_file"], n.metadata["chunk_index"]): n for n in self.bm25.nodes
         }
         expanded: list[dict[str, Any]] = []
 
@@ -118,11 +115,7 @@ class HybridRetriever:
         query_filter = None
         if year_filter:
             query_filter = models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="date", match=models.MatchValue(value=year_filter)
-                    )
-                ]
+                must=[models.FieldCondition(key="date", match=models.MatchValue(value=year_filter))]
             )
 
         # Fetch points and ensure we return a list
@@ -134,14 +127,10 @@ class HybridRetriever:
         )
         return list(response.points)
 
-    def _sparse_search(
-        self, query: str, year_filter: str | None = None
-    ) -> list[TextNode]:
+    def _sparse_search(self, query: str, year_filter: str | None = None) -> list[TextNode]:
         """Keyword search against BM25 with optional year pre-filtering."""
         if year_filter:
-            filtered_nodes = [
-                n for n in self.bm25.nodes if n.metadata.get("date") == year_filter
-            ]
+            filtered_nodes = [n for n in self.bm25.nodes if n.metadata.get("date") == year_filter]
             if not filtered_nodes:
                 logger.warning(
                     "Year filter '%s' matched 0 nodes — falling back to full index.",
@@ -153,19 +142,13 @@ class HybridRetriever:
             temp_bm25 = BM25Okapi(tokenized_corpus)
             tokenized_query = query.lower().split()
             raw_scores = temp_bm25.get_scores(tokenized_query)
-            scored = [
-                (i, float(raw_scores[i]))
-                for i in range(len(raw_scores))
-                if float(raw_scores[i]) > 0.0
-            ]
+            scored = [(i, float(raw_scores[i])) for i in range(len(raw_scores)) if float(raw_scores[i]) > 0.0]
             scored.sort(key=lambda x: x[1], reverse=True)
             return [filtered_nodes[i] for i, _ in scored[: self.sparse_k]]
 
         return self.bm25.search(query, top_k=self.sparse_k)
 
-    def _reciprocal_rank_fusion(
-        self, dense_hits: list[Any], sparse_nodes: list[TextNode]
-    ) -> list[dict[str, Any]]:
+    def _reciprocal_rank_fusion(self, dense_hits: list[Any], sparse_nodes: list[TextNode]) -> list[dict[str, Any]]:
         """Merges dense and sparse results using Reciprocal Rank Fusion."""
         scores: dict[str, float] = {}
 

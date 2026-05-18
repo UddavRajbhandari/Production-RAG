@@ -1,0 +1,48 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    # Only deploy if CI workflow passed
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Staging
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_STAGING_DEPLOY_HOOK is not set. Skipping deploy."
+          else
+            curl -X GET "$RENDER_DEPLOY_HOOK"
+          fi
+
+      - name: Deploy to Production
+        if: github.event.inputs.environment == 'production'
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_PRODUCTION_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_PRODUCTION_DEPLOY_HOOK is not set. Skipping deploy."
+          else
+            curl -X GET "$RENDER_DEPLOY_HOOK"
+          fi

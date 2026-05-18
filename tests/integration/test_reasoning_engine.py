@@ -22,10 +22,7 @@ class TestReasoningEngine:
 
     def test_pipeline_standard_retrieval(self) -> None:
         """Verifies that a standard retrieval query flows through the expected nodes."""
-        query = (
-            "What are the primary principles of the "
-            "World Bank's Access to Information Policy?"
-        )
+        query = "What are the primary principles of the " "World Bank's Access to Information Policy?"
 
         final_state: RAGState = self.pipeline.run(query)
 
@@ -44,10 +41,7 @@ class TestReasoningEngine:
 
     def test_pipeline_calculation_routing(self) -> None:
         """Verifies calculation keywords are routed to the CalculationAgent."""
-        query = (
-            "Calculate the total percentage increase in "
-            "page views between 2022 and 2023."
-        )
+        query = "Calculate the total percentage increase in " "page views between 2022 and 2023."
 
         final_state: RAGState = self.pipeline.run(query)
 

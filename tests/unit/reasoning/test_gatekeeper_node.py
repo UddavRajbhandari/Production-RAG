@@ -14,9 +14,7 @@ from src.reasoning.state import RAGState
 class TestGatekeeperNode:
     """Test suite for GatekeeperNode."""
 
-    def test_process_validation_passed(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_validation_passed(self, sample_rag_state_with_context: RAGState) -> None:
         """Test validation passed."""
         with patch("src.reasoning.nodes.gatekeeper.LLMClient") as mock_client_class:
             mock_client = MagicMock()
@@ -32,9 +30,7 @@ class TestGatekeeperNode:
             assert result["validation_passed"] is True
             assert result["error_message"] is None
 
-    def test_process_validation_failed(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_validation_failed(self, sample_rag_state_with_context: RAGState) -> None:
         """Test validation failed."""
         with patch("src.reasoning.nodes.gatekeeper.LLMClient") as mock_client_class:
             mock_client = MagicMock()
@@ -51,9 +47,7 @@ class TestGatekeeperNode:
             assert result["error_message"] is not None
             assert "Gatekeeper rejection" in result["error_message"]
 
-    def test_process_fail_open_on_error(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_fail_open_on_error(self, sample_rag_state_with_context: RAGState) -> None:
         """Test fail-open behavior on system error."""
         with patch("src.reasoning.nodes.gatekeeper.LLMClient") as mock_client_class:
             mock_client = MagicMock()

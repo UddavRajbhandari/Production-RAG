@@ -74,9 +74,7 @@ def find_best_chunk_match(
     return []
 
 
-def update_ground_truth_ids(
-    naive_nodes_path: str, sa_nodes_path: str, gt_path: str
-) -> None:
+def update_ground_truth_ids(naive_nodes_path: str, sa_nodes_path: str, gt_path: str) -> None:
     """
     Update ground truth file with deterministic chunk IDs for both chunking methods.
 
@@ -141,10 +139,7 @@ def update_ground_truth_ids(
             status = "PARTIAL"
         else:
             status = "MISSING"
-        print(
-            f"  {pair['question_id']}: {status} "
-            f"(naive={len(naive_ids)}, sa={len(sa_ids)})"
-        )
+        print(f"  {pair['question_id']}: {status} " f"(naive={len(naive_ids)}, sa={len(sa_ids)})")
 
     # Save updated ground truth
     out_file: TextIO

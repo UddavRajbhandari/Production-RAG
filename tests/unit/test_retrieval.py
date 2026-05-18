@@ -123,9 +123,7 @@ def test_reranker_does_not_mutate_candidates(monkeypatch: Any) -> None:
     reranker.top_n = 1
     reranker._use_onnx = False
 
-    def mock_predict_pytorch(
-        query: str, candidates: list[dict[str, Any]]
-    ) -> list[float]:
+    def mock_predict_pytorch(query: str, candidates: list[dict[str, Any]]) -> list[float]:
         return [0.1, 0.9]
 
     monkeypatch.setattr(reranker, "_predict_pytorch", mock_predict_pytorch)

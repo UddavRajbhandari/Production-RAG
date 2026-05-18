@@ -24,9 +24,7 @@ class MetadataPipeline:
         self.config = config
         # Load department mapping once at init time.
         # Falls back to empty dict if key absent — handled in _resolve_department.
-        self._dept_map: dict[str, str] = config.get("ingestion", {}).get(
-            "department_mapping", {}
-        )
+        self._dept_map: dict[str, str] = config.get("ingestion", {}).get("department_mapping", {})
 
     def process(self, nodes: list[TextNode], source_file: str) -> list[TextNode]:
         """

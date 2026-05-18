@@ -525,9 +525,18 @@ curl http://localhost:8000/api/v1/metadata/stats
 API_HOST=0.0.0.0
 API_PORT=8000
 
+# Security
+API_KEY=your_key_here
+REQUIRE_API_KEY=True
+RATE_LIMIT_PER_MINUTE=60
+
+# Observability
+SENTRY_DSN=your_sentry_dsn_here
+
 # Storage
 QDRANT_HOST=localhost
 QDRANT_PORT=6333
+```
 
 # LLM (for full queries)
 OPENROUTER_API_KEY=your_key_here
@@ -546,6 +555,7 @@ OPENAI_API_KEY=your_key_here
 | BM25 Index | `storage/bm25_index_structure_aware.pkl` |
 | Qdrant Data | Docker volume |
 | Metadata DB | `storage/metadata_structure_aware.db` |
+
 
 ---
 

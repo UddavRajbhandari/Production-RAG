@@ -126,9 +126,7 @@ def compute_context_precision(question: str, contexts: list[str]) -> float:
     return float(relevant_count / len(contexts))
 
 
-def compute_faithfulness(
-    ground_truth_answer: str, generated_answer: str, contexts: list[str]
-) -> float:
+def compute_faithfulness(ground_truth_answer: str, generated_answer: str, contexts: list[str]) -> float:
     """Compute faithfulness: whether answer is grounded in retrieved contexts."""
     if not generated_answer or not contexts:
         return 0.0
@@ -218,9 +216,7 @@ def load_ground_truth(path: str) -> list[dict[str, Any]]:
         return data
 
 
-def run_pipeline_for_question(
-    pipeline: ReasoningPipeline, question: str
-) -> dict[str, Any]:
+def run_pipeline_for_question(pipeline: ReasoningPipeline, question: str) -> dict[str, Any]:
     """Run pipeline and extract answer + contexts."""
     result = pipeline.run(question)
 
@@ -248,9 +244,7 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--limit", type=int, default=0, help="Limit number of queries (0 = all)"
-    )
+    parser.add_argument("--limit", type=int, default=0, help="Limit number of queries (0 = all)")
     args = parser.parse_args()
 
     # Paths - auto-append chunker type suffix for Phase 6 iteration comparison
@@ -263,9 +257,7 @@ def main() -> None:
 
         with open(config_path) as f:
             config = yaml.safe_load(f)
-        chunker_type = config.get("ingestion", {}).get(
-            "chunker_type", "structure_aware"
-        )
+        chunker_type = config.get("ingestion", {}).get("chunker_type", "structure_aware")
     else:
         chunker_type = "structure_aware"
 
@@ -460,9 +452,7 @@ def main() -> None:
         return float(relevant_count / len(contexts))
 
     # Compute faithfulness: whether answer is grounded in retrieved contexts
-    def compute_faithfulness(
-        ground_truth_answer: str, generated_answer: str, contexts: list[str]
-    ) -> float:
+    def compute_faithfulness(ground_truth_answer: str, generated_answer: str, contexts: list[str]) -> float:
         if not generated_answer or not contexts:
             return 0.0
 
@@ -561,9 +551,7 @@ def main() -> None:
             r.get("generated_answer", ""),
             r.get("contexts", []),
         )
-        recall = compute_context_recall(
-            r.get("ground_truth", ""), r.get("contexts", [])
-        )
+        recall = compute_context_recall(r.get("ground_truth", ""), r.get("contexts", []))
         relev = compute_answer_relevancy(r["question"], r.get("generated_answer", ""))
         compl = compute_answer_completeness(r.get("generated_answer", ""))
 
@@ -577,20 +565,10 @@ def main() -> None:
     # Plus answer_completeness as custom internal metric
     metrics_dict: dict[str, float] = {
         "context_precision": (sum(precisions) / len(precisions) if precisions else 0),
-        "faithfulness": (
-            sum(faithfulness_scores) / len(faithfulness_scores)
-            if faithfulness_scores
-            else 0
-        ),
-        "context_recall": (
-            sum(context_recalls) / len(context_recalls) if context_recalls else 0
-        ),
+        "faithfulness": (sum(faithfulness_scores) / len(faithfulness_scores) if faithfulness_scores else 0),
+        "context_recall": (sum(context_recalls) / len(context_recalls) if context_recalls else 0),
         "answer_relevancy": (sum(relevancies) / len(relevancies) if relevancies else 0),
-        "answer_completeness": (
-            sum(completeness_scores) / len(completeness_scores)
-            if completeness_scores
-            else 0
-        ),
+        "answer_completeness": (sum(completeness_scores) / len(completeness_scores) if completeness_scores else 0),
     }
 
     # Store per-query results
@@ -633,10 +611,7 @@ def main() -> None:
     if latencies:
         avg_latency = sum(latencies) / len(latencies)
         max_latency = max(latencies)
-        print(
-            f"\nLatency: avg={avg_latency:.2f}s, max={max_latency:.2f}s "
-            f"(target: <=180s)"
-        )
+        print(f"\nLatency: avg={avg_latency:.2f}s, max={max_latency:.2f}s " f"(target: <=180s)")
 
     # Save results
     output = {

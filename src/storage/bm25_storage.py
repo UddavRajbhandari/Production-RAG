@@ -61,10 +61,7 @@ class BM25Storage:
         silently leaving the index in an unusable None state.
         """
         if not os.path.exists(self.persist_path):
-            raise FileNotFoundError(
-                f"BM25 index not found at '{self.persist_path}'. "
-                "Run populate_storage.py first."
-            )
+            raise FileNotFoundError(f"BM25 index not found at '{self.persist_path}'. " "Run populate_storage.py first.")
         with open(self.persist_path, "rb") as f:
             data = pickle.load(f)
         self.index = data["index"]
@@ -86,40 +83,30 @@ class BM25Storage:
         Callers must handle a shorter-than-expected result list.
         """
         if not self.index:
-            raise ValueError(
-                "BM25 index not loaded. Call load() or build_index() first."
-            )
+            raise ValueError("BM25 index not loaded. Call load() or build_index() first.")
 
         tokenized_query = query.lower().split()
         scores = self.index.get_scores(tokenized_query)
 
         # FIX: filter zero-score results before taking top_k
-        scored_indices = [
-            (i, float(scores[i])) for i in range(len(scores)) if float(scores[i]) > 0.0
-        ]
+        scored_indices = [(i, float(scores[i])) for i in range(len(scores)) if float(scores[i]) > 0.0]
         scored_indices.sort(key=lambda x: x[1], reverse=True)
         top_indices = [i for i, _ in scored_indices[:top_k]]
 
         return [self.nodes[i] for i in top_indices]
 
-    def search_with_scores(
-        self, query: str, top_k: int = 10
-    ) -> list[tuple[TextNode, float]]:
+    def search_with_scores(self, query: str, top_k: int = 10) -> list[tuple[TextNode, float]]:
         """
         Same as search() but returns (node, score) tuples.
         Useful for Phase 3 RRF debugging and RAGAS evaluation.
         """
         if not self.index:
-            raise ValueError(
-                "BM25 index not loaded. Call load() or build_index() first."
-            )
+            raise ValueError("BM25 index not loaded. Call load() or build_index() first.")
 
         tokenized_query = query.lower().split()
         scores = self.index.get_scores(tokenized_query)
 
-        scored_indices = [
-            (i, float(scores[i])) for i in range(len(scores)) if float(scores[i]) > 0.0
-        ]
+        scored_indices = [(i, float(scores[i])) for i in range(len(scores)) if float(scores[i]) > 0.0]
         scored_indices.sort(key=lambda x: x[1], reverse=True)
 
         return [(self.nodes[i], score) for i, score in scored_indices[:top_k]]

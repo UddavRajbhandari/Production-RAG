@@ -2,10 +2,13 @@
 Pydantic models for API request/response validation.
 """
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
+from pydantic_settings import BaseSettings
 
 
-class Settings(BaseModel):
+class Settings(BaseSettings):
     """Application settings."""
 
     # API Configuration
@@ -28,9 +31,12 @@ class Settings(BaseModel):
     qdrant_port: int = Field(default=6333, alias="QDRANT_PORT")
     qdrant_collection: str = Field(default="production_rag_v1", alias="QDRANT_COLLECTION")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
 
 
 class QueryRequest(BaseModel):
@@ -41,6 +47,23 @@ class QueryRequest(BaseModel):
     include_sources: bool = Field(default=True, description="Include source documents in response")
 
     model_config = {"json_schema_extra": {"example": {"query": "What is the project about?"}}}
+
+    @field_validator("query")
+    @classmethod
+    def sanitize_query(cls, v: str) -> str:
+        """Sanitize query to prevent prompt injection attacks."""
+        # Strip leading/trailing whitespace
+        v = v.strip()
+        # Check for potential prompt injection patterns
+        injection_pattern = re.compile(
+            r"(?i)(system\s*[:\n]|ignore\s+(previous|all|above)\s+instructions|"
+            r"(sudo|admin|root)\s*(command|query|request)|"
+            r"you\s+are\s+(now|a)|return\s+the\s+following)",
+            re.IGNORECASE,
+        )
+        if injection_pattern.search(v):
+            raise ValueError("Invalid query pattern detected")
+        return v
 
 
 class QueryResponse(BaseModel):

@@ -32,9 +32,7 @@ _EMBEDDING_CHECKPOINT_PATH = "storage/embedding_checkpoint.pkl"
 
 def load_nodes(path: str) -> list[TextNode]:
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"Ingested nodes not found at '{path}'. Run batch_ingest.py first."
-        )
+        raise FileNotFoundError(f"Ingested nodes not found at '{path}'. Run batch_ingest.py first.")
     with open(path, "rb") as f:
         nodes: list[TextNode] = pickle.load(f)
     logger.info("Loaded %d nodes from %s.", len(nodes), path)
@@ -73,9 +71,7 @@ def generate_embeddings(
                 len(nodes),
             )
         else:
-            logger.info(
-                "Embedding checkpoint does not match current corpus. Restarting."
-            )
+            logger.info("Embedding checkpoint does not match current corpus. Restarting.")
 
     total = len(nodes)
 
@@ -119,9 +115,7 @@ def verify_backends(
     # Qdrant: check point count matches node count
     info = qdrant.client.get_collection(qdrant.collection_name)
     qdrant_count = info.points_count
-    assert qdrant_count == len(
-        nodes
-    ), f"Qdrant has {qdrant_count} points but expected {len(nodes)}."
+    assert qdrant_count == len(nodes), f"Qdrant has {qdrant_count} points but expected {len(nodes)}."
     logger.info("Qdrant ✓  %d points indexed.", qdrant_count)
 
     # BM25: run a sample query, confirm it returns results
@@ -136,12 +130,8 @@ def verify_backends(
 
     session = neon.Session()
     try:
-        count = session.execute(
-            select(func.count()).select_from(ChunkMetadata)
-        ).scalar()
-        assert count == len(
-            nodes
-        ), f"Neon/SQLite has {count} rows but expected {len(nodes)}."
+        count = session.execute(select(func.count()).select_from(ChunkMetadata)).scalar()
+        assert count == len(nodes), f"Neon/SQLite has {count} rows but expected {len(nodes)}."
         logger.info("Neon/SQLite ✓  %d metadata rows.", count)
     finally:
         session.close()

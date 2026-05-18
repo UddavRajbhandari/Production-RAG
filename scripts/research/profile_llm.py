@@ -107,9 +107,7 @@ def main() -> None:
 
     try:
         # Warm-up call
-        requests.post(
-            OLLAMA_URL, json={"model": MODEL_NAME, "prompt": "hi", "stream": False}
-        )
+        requests.post(OLLAMA_URL, json={"model": MODEL_NAME, "prompt": "hi", "stream": False})
 
         for p in TEST_PROMPTS:
             res = profile_call(p["type"], p["prompt"])
@@ -120,10 +118,7 @@ def main() -> None:
         print(f"{'Type':<20} | {'TTFT':>10} | {'TPS':>10} | {'Total':>10}")
         print("-" * 58)
         for r in results:
-            print(
-                f"{r['type']:<20} | {r['ttft']:>8.1f}ms | "
-                f"{r['tps']:>8.1f} | {r['total_time']:>8.1f}ms"
-            )
+            print(f"{r['type']:<20} | {r['ttft']:>8.1f}ms | " f"{r['tps']:>8.1f} | {r['total_time']:>8.1f}ms")
 
         if results:
             avg_total = statistics.mean([r["total_time"] for r in results])

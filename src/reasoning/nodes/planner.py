@@ -44,9 +44,7 @@ JSON Output:
                 temperature=0.0,
                 default={"sub_tasks": ["Direct retrieval required."]},
             )
-            state["sub_tasks"] = result.get(
-                "sub_tasks", ["Direct retrieval (fallback)"]
-            )
+            state["sub_tasks"] = result.get("sub_tasks", ["Direct retrieval (fallback)"])
             state["error_message"] = None
 
         except Exception as e:

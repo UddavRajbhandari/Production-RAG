@@ -89,3 +89,4 @@ docs/System_Reference_Documentation.md
 gha-creds-*.json
 .mcp.json
 .gemini/
+AGENTS.md

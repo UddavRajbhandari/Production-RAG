@@ -14,13 +14,9 @@ from src.reasoning.state import RAGState
 class TestSummarizationAgentNode:
     """Test suite for SummarizationAgentNode."""
 
-    def test_process_with_context(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_with_context(self, sample_rag_state_with_context: RAGState) -> None:
         """Test summarization with retrieved context."""
-        with patch(
-            "src.reasoning.nodes.summarization_agent.LLMClient"
-        ) as mock_client_class:
+        with patch("src.reasoning.nodes.summarization_agent.LLMClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.generate.return_value = MagicMock(
                 text="Generated answer",
@@ -43,17 +39,11 @@ class TestSummarizationAgentNode:
         assert "No context retrieved" in result["generated_answer"]
         assert "summarization_agent" in result["node_latency_ms"]
 
-    def test_process_error_handling(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_error_handling(self, sample_rag_state_with_context: RAGState) -> None:
         """Test error handling when LLM fails."""
-        with patch(
-            "src.reasoning.nodes.summarization_agent.LLMClient"
-        ) as mock_client_class:
+        with patch("src.reasoning.nodes.summarization_agent.LLMClient") as mock_client_class:
             mock_client = MagicMock()
-            mock_client.generate.return_value = MagicMock(
-                text="", success=False, error="Timeout"
-            )
+            mock_client.generate.return_value = MagicMock(text="", success=False, error="Timeout")
             mock_client_class.return_value = mock_client
 
             node = SummarizationAgentNode()
@@ -64,13 +54,9 @@ class TestSummarizationAgentNode:
 
     def test_latency_tracking(self, sample_rag_state_with_context: RAGState) -> None:
         """Test that latency is tracked."""
-        with patch(
-            "src.reasoning.nodes.summarization_agent.LLMClient"
-        ) as mock_client_class:
+        with patch("src.reasoning.nodes.summarization_agent.LLMClient") as mock_client_class:
             mock_client = MagicMock()
-            mock_client.generate.return_value = MagicMock(
-                text="Test", success=True, error=None
-            )
+            mock_client.generate.return_value = MagicMock(text="Test", success=True, error=None)
             mock_client_class.return_value = mock_client
 
             node = SummarizationAgentNode()

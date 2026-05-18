@@ -29,9 +29,7 @@ class TestPlannerNode:
             assert "planner" in result["node_latency_ms"]
             assert result["current_node"] == "planner"
 
-    def test_process_fallback_on_empty_response(
-        self, sample_rag_state: RAGState
-    ) -> None:
+    def test_process_fallback_on_empty_response(self, sample_rag_state: RAGState) -> None:
         """Test fallback behavior when JSON is empty."""
         with patch("src.reasoning.nodes.planner.LLMClient") as mock_client_class:
             mock_client = MagicMock()

@@ -9,26 +9,11 @@ from src.reasoning.nodes.planner import PlannerNode
 from src.reasoning.state import RAGState
 
 TEST_QUERIES = [
-    (
-        "How did the World Bank's access to information requests change "
-        "between FY2022 and FY2023?"
-    ),
-    (
-        "Compare the Python 3.7.0 tutorial's approach to coding style "
-        "with standard PEP 8 guidelines."
-    ),
-    (
-        "Calculate the total percentage increase in page views for the "
-        "open data portal since 2019."
-    ),
-    (
-        "What are the primary climate resilience metrics used in the "
-        "CLEAR Water dashboard?"
-    ),
-    (
-        "Summarize the findings on mortality rates in low-quality health "
-        "systems across 137 countries."
-    ),
+    ("How did the World Bank's access to information requests change " "between FY2022 and FY2023?"),
+    ("Compare the Python 3.7.0 tutorial's approach to coding style " "with standard PEP 8 guidelines."),
+    ("Calculate the total percentage increase in page views for the " "open data portal since 2019."),
+    ("What are the primary climate resilience metrics used in the " "CLEAR Water dashboard?"),
+    ("Summarize the findings on mortality rates in low-quality health " "systems across 137 countries."),
 ]
 
 

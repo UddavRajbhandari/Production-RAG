@@ -534,3 +534,22 @@ curl http://localhost:8000/api/v1/health
 - Enter: {"query": "What is the project about?", "stream": false,
 "include_sources": true}
 - Click "Execute"
+
+---
+
+## 15. Phase 8.1 Infrastructure Implementation Plan
+
+### 15.1 Objective
+Establish a production-grade infrastructure foundation for the RAG API, including automated deployment, security (authentication), rate limiting, and structured logging/observability.
+
+### 15.2 Proposed Solution
+- **CI/CD**: Automate deployment to Render via GitHub Actions.
+- **Security**: Implement API Key authentication (`X-API-Key`).
+- **Rate Limiting**: Enforce 60 requests/minute per API key using `slowapi`.
+- **Logging**: Structured JSON logging and Sentry error tracking.
+
+### 15.3 Implementation Steps
+1. Update `requirements.txt` with `slowapi` and `sentry-sdk`.
+2. Implement Auth and Logging middleware in `src/api/middleware/`.
+3. Register middleware and configure Sentry in `src/api/main.py`.
+4. Create `.github/workflows/deploy.yml` for Render automation.

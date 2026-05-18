@@ -25,14 +25,9 @@ def audit_pdf(file_path: str) -> None:
             page = doc[i]
             text = page.get_text().strip()
             tables = page.find_tables()
-            print(
-                f"Page {i + 1}: {len(text)} chars, "
-                f"{len(tables.tables)} potential tables detected"
-            )
+            print(f"Page {i + 1}: {len(text)} chars, " f"{len(tables.tables)} potential tables detected")
             if len(text) < 50:
-                print(
-                    f"  [!] Note: Very low text on page {i + 1} (Cover/Image/Separator)"
-                )
+                print(f"  [!] Note: Very low text on page {i + 1} (Cover/Image/Separator)")
         doc.close()
     except Exception as e:
         print(f"  [!] CRITICAL: Error opening PDF: {e}")
@@ -72,9 +67,7 @@ if __name__ == "__main__":
         "f3b45293bf4f8d691cb5330a2d17974b0fdcbff7a1d6dad57f57b8b9b11fbf3f.docx",
         "2605.02661v1.pdf",
     ]
-    files_to_audit = [
-        f for f in all_files if os.path.basename(f) not in already_audited
-    ]
+    files_to_audit = [f for f in all_files if os.path.basename(f) not in already_audited]
     sample_size = min(20, len(files_to_audit))
     selected_files = random.sample(files_to_audit, sample_size)
 

@@ -76,9 +76,7 @@ class DOCXHandler(BaseHandler):
             for row in table.rows:
                 row_data = [cell.text.strip() for cell in row.cells]
                 table_data.append(row_data)
-            blocks.append(
-                {"type": "table", "content": table_data, "metadata": {"table_index": i}}
-            )
+            blocks.append({"type": "table", "content": table_data, "metadata": {"table_index": i}})
         return blocks
 
 

@@ -6,13 +6,22 @@ FastAPI application entry point for Phase 8 deployment.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI
+import sentry_sdk
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from src.api.middleware.auth import verify_api_key
+from src.api.middleware.logging import LoggingMiddleware
+from src.api.middleware.rate_limit import get_rate_limit_key
 from src.api.models import Settings
 from src.api.routes import health, ingest, metadata, query
 
@@ -21,10 +30,31 @@ if TYPE_CHECKING:
     from src.reasoning.pipeline import ReasoningPipeline
     from src.retrieval.hybrid_search import HybridRetriever
 
-logger = logging.getLogger(__name__)
-
 # Global settings instance
 settings = Settings()
+
+# Configure Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[logging.StreamHandler()],
+)
+# Ensure our middleware logger is specifically set to INFO
+logging.getLogger("src.api.middleware").setLevel(logging.INFO)
+
+# Initialize Sentry
+if os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+    )
+
+# Initialize Rate Limiter - per-API-key as per Phase 8 spec
+limiter = Limiter(key_func=get_rate_limit_key, default_limits=[f"{settings.rate_limit_per_minute}/minute"])
+
+logger = logging.getLogger(__name__)
 
 # Global module instances (lazy-loaded)
 _storage_initialized = False
@@ -95,20 +125,47 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS - configure appropriately for production
+# Add Rate Limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
+app.add_middleware(SlowAPIMiddleware)
+
+# Add Structured Logging
+app.add_middleware(LoggingMiddleware)
+
+# Configure CORS - explicitly configure for production (not wildcard)
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["X-API-Key", "Content-Type", "X-Request-ID"],
 )
 
 # Include routers
+# Health check remains public
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
-app.include_router(query.router, prefix="/api/v1", tags=["query"])
-app.include_router(ingest.router, prefix="/api/v1", tags=["ingest"])
-app.include_router(metadata.router, prefix="/api/v1", tags=["metadata"])
+
+# Protected routes
+app.include_router(
+    query.router,
+    prefix="/api/v1",
+    tags=["query"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    ingest.router,
+    prefix="/api/v1",
+    tags=["ingest"],
+    dependencies=[Depends(verify_api_key)],
+)
+app.include_router(
+    metadata.router,
+    prefix="/api/v1",
+    tags=["metadata"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @app.get("/")

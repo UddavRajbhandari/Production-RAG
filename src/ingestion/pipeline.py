@@ -24,9 +24,7 @@ class IngestionPipeline:
             self.config = yaml.safe_load(f)
 
         self.parser = DocumentParser()
-        self.analyzer = StructureAnalyzer(
-            min_char_threshold=self.config["ingestion"]["min_char_threshold"]
-        )
+        self.analyzer = StructureAnalyzer(min_char_threshold=self.config["ingestion"]["min_char_threshold"])
         chunker_type = self.config["ingestion"].get("chunker_type", "structure_aware")
         self.chunker = get_chunker(
             chunker_type=chunker_type,
