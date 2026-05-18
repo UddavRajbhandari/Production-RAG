@@ -377,9 +377,7 @@ class TestStressTestingAdapterLive:
         """Test initialization with use_live_pipeline=True creates adapter."""
         # This will fail to initialize pipeline (expected - no LLM running)
         # but tests the flag is processed correctly
-        with patch(
-            "src.stress_testing.adapter.ReasoningPipelineAdapter._init_pipeline"
-        ) as mock_init:
+        with patch("src.stress_testing.adapter.ReasoningPipelineAdapter._init_pipeline") as mock_init:
             mock_init.side_effect = RuntimeError("No LLM")
             with pytest.raises(RuntimeError, match="No LLM"):
                 StressTestingAdapter(use_live_pipeline=True)

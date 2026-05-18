@@ -69,13 +69,9 @@ def test_metadata_pipeline_processes_phase1_fields() -> None:
         TextNode(text="Quarterly results improved.", metadata={"type": "paragraph"}),
     ]
 
-    enriched = pipeline.process(
-        nodes, "data/raw/pdf/Access-to-Information-2023-annual-report.pdf"
-    )
+    enriched = pipeline.process(nodes, "data/raw/pdf/Access-to-Information-2023-annual-report.pdf")
 
-    assert enriched[0].metadata["source_file"] == (
-        "Access-to-Information-2023-annual-report.pdf"
-    )
+    assert enriched[0].metadata["source_file"] == ("Access-to-Information-2023-annual-report.pdf")
     assert enriched[0].metadata["chunk_index"] == 0
     assert enriched[1].metadata["chunk_index"] == 1
     assert enriched[0].metadata["date"] == "2023"

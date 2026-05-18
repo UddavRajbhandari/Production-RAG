@@ -88,10 +88,7 @@ def run_stress_tests(
         for result in report.results:
             status = "PASS" if result.defense_triggered else "FAIL"
             latency = f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
-            print(
-                f"  [{status}] {result.attack_name} ({result.category.value}) "
-                f"- {latency}"
-            )
+            print(f"  [{status}] {result.attack_name} ({result.category.value}) " f"- {latency}")
             if result.notes:
                 print(f"         Note: {result.notes}")
 
@@ -132,10 +129,7 @@ def run_by_category(
     """
     print(f"Running {category.value} tests...")
 
-    if use_live:
-        adapter = StressTestingAdapter(use_live_pipeline=True)
-    else:
-        adapter = StressTestingAdapter()
+    adapter = StressTestingAdapter(use_live_pipeline=True) if use_live else StressTestingAdapter()
 
     all_cases = get_all_test_cases()
     filtered_cases = [c for c in all_cases if c.category == category]
@@ -162,9 +156,7 @@ def run_by_category(
 
 def main() -> None:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Phase 7 Stress Testing - Red Teaming for RAG Pipeline"
-    )
+    parser = argparse.ArgumentParser(description="Phase 7 Stress Testing - Red Teaming for RAG Pipeline")
     parser.add_argument(
         "--category",
         choices=["prompt_injection", "information_evasion", "bias_probing"],
@@ -208,9 +200,7 @@ def main() -> None:
 
         if args.category:
             category = AttackCategory(args.category)
-            run_by_category(
-                category, args.output, verbose=args.verbose, use_live=args.live
-            )
+            run_by_category(category, args.output, verbose=args.verbose, use_live=args.live)
         else:
             run_stress_tests(
                 args.output,

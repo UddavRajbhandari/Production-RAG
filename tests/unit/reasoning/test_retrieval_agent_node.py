@@ -16,13 +16,9 @@ class TestRetrievalAgentNode:
 
     def test_process_success(self, sample_rag_state: RAGState) -> None:
         """Test successful retrieval."""
-        with patch(
-            "src.reasoning.nodes.retrieval_agent.HybridRetriever"
-        ) as mock_retriever_class:
+        with patch("src.reasoning.nodes.retrieval_agent.HybridRetriever") as mock_retriever_class:
             mock_retriever = MagicMock()
-            mock_retriever.search.return_value = [
-                {"text": "Result 1", "metadata": {"source_file": "doc1.pdf"}}
-            ]
+            mock_retriever.search.return_value = [{"text": "Result 1", "metadata": {"source_file": "doc1.pdf"}}]
             mock_retriever.expand_context.return_value = [
                 {
                     "text": "Result 1",
@@ -41,9 +37,7 @@ class TestRetrievalAgentNode:
 
     def test_process_with_subtasks(self, sample_rag_state: RAGState) -> None:
         """Test retrieval includes sub-tasks in search query."""
-        with patch(
-            "src.reasoning.nodes.retrieval_agent.HybridRetriever"
-        ) as mock_retriever_class:
+        with patch("src.reasoning.nodes.retrieval_agent.HybridRetriever") as mock_retriever_class:
             mock_retriever = MagicMock()
             mock_retriever.search.return_value = []
             mock_retriever.expand_context.return_value = []
@@ -60,9 +54,7 @@ class TestRetrievalAgentNode:
 
     def test_process_error_handling(self, sample_rag_state: RAGState) -> None:
         """Test error handling when retrieval fails."""
-        with patch(
-            "src.reasoning.nodes.retrieval_agent.HybridRetriever"
-        ) as mock_retriever_class:
+        with patch("src.reasoning.nodes.retrieval_agent.HybridRetriever") as mock_retriever_class:
             mock_retriever = MagicMock()
             mock_retriever.search.side_effect = Exception("Connection error")
             mock_retriever_class.return_value = mock_retriever
@@ -75,9 +67,7 @@ class TestRetrievalAgentNode:
 
     def test_latency_tracking(self, sample_rag_state: RAGState) -> None:
         """Test that latency is tracked."""
-        with patch(
-            "src.reasoning.nodes.retrieval_agent.HybridRetriever"
-        ) as mock_retriever_class:
+        with patch("src.reasoning.nodes.retrieval_agent.HybridRetriever") as mock_retriever_class:
             mock_retriever = MagicMock()
             mock_retriever.search.return_value = []
             mock_retriever.expand_context.return_value = []

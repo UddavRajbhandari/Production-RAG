@@ -60,9 +60,7 @@ class CircuitBreaker:
         self.last_failure_time = time.time()
         if self.failures >= self.failure_threshold:
             self.is_open = True
-            logger.warning(
-                f"Circuit breaker opened after {self.failures} consecutive failures"
-            )
+            logger.warning(f"Circuit breaker opened after {self.failures} consecutive failures")
 
     def can_proceed(self) -> bool:
         """Check if calls can proceed."""
@@ -127,11 +125,7 @@ class LLMClient:
             for profile_name in priority_list:
                 profile = profiles.get(profile_name)
                 # Skip if disabled in comments or missing
-                if (
-                    profile
-                    and profile.get("type") != "disabled"
-                    and self._try_init_profile(profile_name, profile)
-                ):
+                if profile and profile.get("type") != "disabled" and self._try_init_profile(profile_name, profile):
                     return
 
             # If API providers fail, use Ollama fallback
@@ -147,9 +141,7 @@ class LLMClient:
             # Explicit selection
             profile = profiles.get(requested_provider)
             if not self._try_init_profile(requested_provider, profile):
-                logger.error(
-                    f"Failed to initialize requested provider: {requested_provider}"
-                )
+                logger.error(f"Failed to initialize requested provider: {requested_provider}")
 
     def _try_init_profile(self, name: str, profile: dict | None) -> bool:
         """Attempts to initialize a specific provider profile."""
@@ -190,9 +182,7 @@ class LLMClient:
             # Minimal reachability check
             try:
                 # We don't want to wait too long for a check
-                resp = requests.get(
-                    url.replace("/api/generate", "/api/tags"), timeout=2
-                )
+                resp = requests.get(url.replace("/api/generate", "/api/tags"), timeout=2)
                 if resp.status_code == 200:
                     self._ollama_url = url
                     self._ollama_model = profile.get("model", "llama3")
@@ -224,51 +214,47 @@ class LLMClient:
             api_key_valid = bool(os.getenv(env_key, ""))
 
         # Try API provider first (if set and key still valid)
-        if (
-            self.provider == "api"
-            and api_key_valid
-            and self.circuit_breaker.can_proceed()
-        ):
-            result = self._api_client.generate(
-                prompt, format_json, temperature, custom_model
-            )
-            if result["success"]:
-                self.circuit_breaker.record_success()
-                return LLMResponse(
-                    text=result["text"],
-                    raw_response=result["raw_response"],
-                    latency_ms=result["latency_ms"],
-                    success=True,
-                    error=None,
-                )
+        if self.provider == "api" and api_key_valid and self.circuit_breaker.can_proceed():
+            try:
+                result = self._api_client.generate(prompt, format_json, temperature, custom_model)
+                if result["success"]:
+                    self.circuit_breaker.record_success()
+                    return LLMResponse(
+                        text=result["text"],
+                        raw_response=result["raw_response"],
+                        latency_ms=result["latency_ms"],
+                        success=True,
+                        error=None,
+                    )
 
-            # API failed - record failure
-            self.circuit_breaker.record_failure()
-            logger.warning(f"API failed: {result.get('error')}")
+                # API returned success=False (e.g. max retries exceeded inside _api_client)
+                self.circuit_breaker.record_failure()
+                logger.warning(f"API failed: {result.get('error')}")
+            except Exception as e:
+                # Catch connection errors, timeouts, or 429/500 errors from httpx
+                self.circuit_breaker.record_failure()
+                logger.error(f"API client exception: {str(e)}")
 
             # Try other API profiles before falling back to Ollama
             profiles = cast(dict[str, Any], self.config.get("llm.profiles", {}))
             for profile_name in ["openai", "openrouter"]:  # HuggingFace disabled
                 profile = profiles.get(profile_name)
-                if (
-                    profile
-                    and profile_name != self.active_profile
-                    and self._try_init_profile(profile_name, profile)
-                ):
-                    logger.info(f"Trying fallback: {profile_name}")
-                    result = self._api_client.generate(
-                        prompt, format_json, temperature, custom_model
-                    )
-                    if result["success"]:
-                        self.circuit_breaker.record_success()
-                        return LLMResponse(
-                            text=result["text"],
-                            raw_response=result["raw_response"],
-                            latency_ms=result["latency_ms"],
-                            success=True,
-                            error=None,
-                        )
-                    logger.warning(f"Fallback {profile_name} also failed")
+                if profile and profile_name != self.active_profile and self._try_init_profile(profile_name, profile):
+                    logger.info(f"Trying fallback profile: {profile_name}")
+                    try:
+                        result = self._api_client.generate(prompt, format_json, temperature, custom_model)
+                        if result["success"]:
+                            self.circuit_breaker.record_success()
+                            return LLMResponse(
+                                text=result["text"],
+                                raw_response=result["raw_response"],
+                                latency_ms=result["latency_ms"],
+                                success=True,
+                                error=None,
+                            )
+                        logger.warning(f"Fallback {profile_name} also failed")
+                    except Exception as e:
+                        logger.warning(f"Fallback {profile_name} exception: {str(e)}")
 
         # Fallback to Ollama
         if hasattr(self, "_ollama_url") and self._ollama_url:
@@ -302,9 +288,7 @@ class LLMClient:
             # Use longer timeout for Ollama (30 minutes for CPU inference)
             ollama_timeout = 1800
             try:
-                response = requests.post(
-                    self._ollama_url, json=payload, timeout=ollama_timeout
-                )
+                response = requests.post(self._ollama_url, json=payload, timeout=ollama_timeout)
                 response.raise_for_status()
                 result = response.json()
                 latency_ms = (time.perf_counter() - start_time) * 1000

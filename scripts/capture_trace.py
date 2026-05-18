@@ -7,10 +7,7 @@ from src.reasoning.pipeline import ReasoningPipeline
 
 def main() -> None:
     # Query from Phase 1-3 ingested corpus (World Bank ATI Report)
-    query = (
-        "What period does the fiscal year 2023 (FY23) cover in the "
-        "World Bank Access to Information report?"
-    )
+    query = "What period does the fiscal year 2023 (FY23) cover in the " "World Bank Access to Information report?"
     print(f"Executing Reasoning Engine for query: '{query}'")
 
     # Ensure src is in path if not already

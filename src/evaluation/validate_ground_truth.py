@@ -62,7 +62,5 @@ def validate(path: str) -> None:
 
 if __name__ == "__main__":
     # Ensure directory exists before running
-    target_path = (
-        sys.argv[1] if len(sys.argv) > 1 else "data/ground_truth/ground_truth.json"
-    )
+    target_path = sys.argv[1] if len(sys.argv) > 1 else "data/ground_truth/ground_truth.json"
     validate(target_path)

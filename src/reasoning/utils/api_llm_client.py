@@ -133,9 +133,7 @@ class APILLMClient:
 
             except httpx.HTTPStatusError:
                 if response.status_code == 429 and attempt < max_retries - 1:
-                    logger.info(
-                        f"Rate limited (429), retrying in {5 * (attempt + 1)}s..."
-                    )
+                    logger.info(f"Rate limited (429), retrying in {5 * (attempt + 1)}s...")
                     time.sleep(5 * (attempt + 1))  # short backoff
                     continue
                 raise

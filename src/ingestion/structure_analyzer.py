@@ -81,11 +81,7 @@ class StructureAnalyzer:
 
         markdown = ""
         for i, row in enumerate(table_data):
-            row_str = (
-                "| "
-                + " | ".join([str(cell) if cell is not None else "" for cell in row])
-                + " |"
-            )
+            row_str = "| " + " | ".join([str(cell) if cell is not None else "" for cell in row]) + " |"
             markdown += row_str + "\n"
             if i == 0:  # Add separator after header
                 separator = "| " + " | ".join(["---"] * len(row)) + " |"

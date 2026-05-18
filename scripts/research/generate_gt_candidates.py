@@ -84,12 +84,8 @@ def generate_candidates(chunk_text: str) -> list[dict[str, str]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--num-chunks", type=int, default=18
-    )  # 18 chunks * 2 QA = 36 pairs
-    parser.add_argument(
-        "--merge", action="store_true", help="Merge into main ground_truth.json"
-    )
+    parser.add_argument("--num-chunks", type=int, default=18)  # 18 chunks * 2 QA = 36 pairs
+    parser.add_argument("--merge", action="store_true", help="Merge into main ground_truth.json")
     args = parser.parse_args()
 
     nodes_path = "data/processed/chunks/ingested_nodes_structure_aware.pkl"
@@ -117,10 +113,7 @@ def main() -> None:
 
     new_pairs: list[dict[str, Any]] = []
 
-    print(
-        f"Generating QA candidates for {len(sampled_nodes)} chunks "
-        f"using {MODEL_NAME}..."
-    )
+    print(f"Generating QA candidates for {len(sampled_nodes)} chunks " f"using {MODEL_NAME}...")
 
     for i, node in enumerate(sampled_nodes):
         print(f"[{i + 1}/{len(sampled_nodes)}] Processing chunk {node.id_}...")
@@ -133,9 +126,7 @@ def main() -> None:
             if q and a and q.lower() not in existing_questions:
                 new_pairs.append(
                     {
-                        "question_id": (
-                            f"gt_{len(existing_gt) + len(new_pairs) + 1:03d}"
-                        ),
+                        "question_id": (f"gt_{len(existing_gt) + len(new_pairs) + 1:03d}"),
                         "question": q,
                         "ground_truth_answer": a,
                         "ground_truth_chunk_ids": {

@@ -49,9 +49,7 @@ FINAL ANSWER:
             text = c.get("expanded_text", c["text"])
             return f"Source: {source}\n{text}"
 
-        context_text = "\n\n---\n\n".join(
-            _format_context_entry(c) for c in state["retrieved_context"]
-        )
+        context_text = "\n\n---\n\n".join(_format_context_entry(c) for c in state["retrieved_context"])
 
         prompt = self.prompt_template.format(context=context_text, query=state["query"])
 

@@ -52,9 +52,7 @@ class CrossEncoderReranker:
         from transformers import AutoTokenizer
 
         self._tokenizer = AutoTokenizer.from_pretrained(_ONNX_MODEL_DIR)
-        self._ort_model = ORTModelForSequenceClassification.from_pretrained(
-            _ONNX_MODEL_DIR
-        )
+        self._ort_model = ORTModelForSequenceClassification.from_pretrained(_ONNX_MODEL_DIR)
         self._use_onnx = True
         logger.info("Reranker loaded from ONNX: %s", _ONNX_MODEL_DIR)
 
@@ -67,9 +65,7 @@ class CrossEncoderReranker:
         self._use_onnx = False
         logger.info("Reranker loaded from PyTorch: %s", model_name)
 
-    def rerank(
-        self, query: str, candidates: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def rerank(self, query: str, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Predicts relevance scores for all candidates and sorts them.
         Returns the top N highly-relevant results.
@@ -77,21 +73,15 @@ class CrossEncoderReranker:
         if not candidates:
             return []
 
-        if self._use_onnx:
-            scores = self._predict_onnx(query, candidates)
-        else:
-            scores = self._predict_pytorch(query, candidates)
+        scores = self._predict_onnx(query, candidates) if self._use_onnx else self._predict_pytorch(query, candidates)
 
         scored = [
-            {**candidate, "rerank_score": float(score)}
-            for candidate, score in zip(candidates, scores, strict=True)
+            {**candidate, "rerank_score": float(score)} for candidate, score in zip(candidates, scores, strict=True)
         ]
         scored.sort(key=lambda x: float(x["rerank_score"]), reverse=True)
         return scored[: self.top_n]
 
-    def _predict_onnx(
-        self, query: str, candidates: list[dict[str, Any]]
-    ) -> list[float]:
+    def _predict_onnx(self, query: str, candidates: list[dict[str, Any]]) -> list[float]:
         """Runs inference via ONNX Runtime."""
         import torch
 
@@ -111,9 +101,7 @@ class CrossEncoderReranker:
             return values if isinstance(values, list) else [float(values)]
         return [float(logits)]
 
-    def _predict_pytorch(
-        self, query: str, candidates: list[dict[str, Any]]
-    ) -> list[float]:
+    def _predict_pytorch(self, query: str, candidates: list[dict[str, Any]]) -> list[float]:
         """Runs inference via the PyTorch CrossEncoder fallback."""
         pairs = [[query, candidate["text"]] for candidate in candidates]
         return [float(score) for score in self._cross_encoder.predict(pairs)]

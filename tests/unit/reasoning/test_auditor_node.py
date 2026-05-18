@@ -14,9 +14,7 @@ from src.reasoning.state import RAGState
 class TestAuditorNode:
     """Test suite for AuditorNode."""
 
-    def test_process_no_hallucination(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_no_hallucination(self, sample_rag_state_with_context: RAGState) -> None:
         """Test when no hallucination detected."""
         with patch("src.reasoning.nodes.auditor.LLMClient") as mock_client_class:
             mock_client = MagicMock()
@@ -31,9 +29,7 @@ class TestAuditorNode:
 
             assert result["validation_passed"] is True
 
-    def test_process_hallucination_detected(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_hallucination_detected(self, sample_rag_state_with_context: RAGState) -> None:
         """Test when hallucination is detected."""
         with patch("src.reasoning.nodes.auditor.LLMClient") as mock_client_class:
             mock_client = MagicMock()
@@ -50,9 +46,7 @@ class TestAuditorNode:
             assert result["error_message"] is not None
             assert "hallucination" in result["error_message"].lower()
 
-    def test_process_fail_open_on_error(
-        self, sample_rag_state_with_context: RAGState
-    ) -> None:
+    def test_process_fail_open_on_error(self, sample_rag_state_with_context: RAGState) -> None:
         """Test fail-open behavior on system error."""
         with patch("src.reasoning.nodes.auditor.LLMClient") as mock_client_class:
             mock_client = MagicMock()

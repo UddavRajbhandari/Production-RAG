@@ -22,9 +22,7 @@ class TestRouterNode:
         assert result["current_node"] == "retrieval_agent"
         assert "router" in result["node_latency_ms"]
 
-    def test_route_to_calculation_agent_calc_keyword(
-        self, sample_rag_state: RAGState
-    ) -> None:
+    def test_route_to_calculation_agent_calc_keyword(self, sample_rag_state: RAGState) -> None:
         """Test routing to calculation agent with 'calculate' keyword."""
         sample_rag_state["query"] = "Calculate the total revenue"
 
@@ -33,9 +31,7 @@ class TestRouterNode:
 
         assert result["current_node"] == "calculation_agent"
 
-    def test_route_to_calculation_agent_math_keyword(
-        self, sample_rag_state: RAGState
-    ) -> None:
+    def test_route_to_calculation_agent_math_keyword(self, sample_rag_state: RAGState) -> None:
         """Test routing to calculation agent with 'percentage' keyword."""
         sample_rag_state["query"] = "What is the percentage increase?"
 
@@ -44,9 +40,7 @@ class TestRouterNode:
 
         assert result["current_node"] == "calculation_agent"
 
-    def test_route_to_calculation_agent_from_subtasks(
-        self, sample_rag_state: RAGState
-    ) -> None:
+    def test_route_to_calculation_agent_from_subtasks(self, sample_rag_state: RAGState) -> None:
         """Test routing based on sub-tasks content."""
         sample_rag_state["query"] = "Tell me about revenue"
         sample_rag_state["sub_tasks"] = ["Calculate total revenue"]

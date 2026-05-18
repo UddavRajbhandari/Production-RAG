@@ -65,9 +65,7 @@ class StructureAwareChunker:
             if block_type in ("table", "code_block"):
                 # Hard rule: never split tables or code blocks.
                 node = TextNode(text=content, metadata={**metadata, "type": block_type})
-                node.id_ = generate_deterministic_id(
-                    content, prefix=chunk_type, index=chunk_index
-                )
+                node.id_ = generate_deterministic_id(content, prefix=chunk_type, index=chunk_index)
                 chunk_index += 1
                 nodes.append(node)
             else:
@@ -83,9 +81,7 @@ class StructureAwareChunker:
                                 "sub_index": i,
                             },
                         )
-                        node.id_ = generate_deterministic_id(
-                            sub_content, prefix=chunk_type, index=chunk_index
-                        )
+                        node.id_ = generate_deterministic_id(sub_content, prefix=chunk_type, index=chunk_index)
                         chunk_index += 1
                         nodes.append(node)
                 else:
@@ -93,9 +89,7 @@ class StructureAwareChunker:
                         text=content,
                         metadata={**metadata, "type": block_type},
                     )
-                    node.id_ = generate_deterministic_id(
-                        content, prefix=chunk_type, index=chunk_index
-                    )
+                    node.id_ = generate_deterministic_id(content, prefix=chunk_type, index=chunk_index)
                     chunk_index += 1
                     nodes.append(node)
 
@@ -184,9 +178,7 @@ class NaiveChunker:
                     text=sub_content,
                     metadata={"type": "naive_chunk", "sub_index": i},
                 )
-                node.id_ = generate_deterministic_id(
-                    sub_content, prefix="naive", index=chunk_index
-                )
+                node.id_ = generate_deterministic_id(sub_content, prefix="naive", index=chunk_index)
                 chunk_index += 1
                 nodes.append(node)
         else:
@@ -194,9 +186,7 @@ class NaiveChunker:
                 text=combined_text,
                 metadata={"type": "naive_chunk"},
             )
-            node.id_ = generate_deterministic_id(
-                combined_text, prefix="naive", index=chunk_index
-            )
+            node.id_ = generate_deterministic_id(combined_text, prefix="naive", index=chunk_index)
             nodes.append(node)
 
         return nodes
