@@ -34,8 +34,7 @@ class CrossEncoderReranker:
                 return
             except ImportError as exc:
                 logger.warning(
-                    "ONNX reranker path found but dependencies unavailable (%s). "
-                    "Falling back to PyTorch CrossEncoder.",
+                    "ONNX reranker path found but dependencies unavailable (%s). Falling back to PyTorch CrossEncoder.",
                     exc,
                 )
 

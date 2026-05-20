@@ -70,7 +70,7 @@ def main() -> None:
     avg_total = avg_retrieval + avg_rerank
 
     print("-" * len(header))
-    print(f"{'Averages':<48} | {avg_retrieval:>10.1f}ms  | " f"{avg_rerank:>8.1f}ms  | {avg_total:>8.1f}ms")
+    print(f"{'Averages':<48} | {avg_retrieval:>10.1f}ms  | {avg_rerank:>8.1f}ms  | {avg_total:>8.1f}ms")
     print()
 
     print("Budget report:")

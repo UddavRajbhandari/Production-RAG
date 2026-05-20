@@ -611,7 +611,7 @@ def main() -> None:
     if latencies:
         avg_latency = sum(latencies) / len(latencies)
         max_latency = max(latencies)
-        print(f"\nLatency: avg={avg_latency:.2f}s, max={max_latency:.2f}s " f"(target: <=180s)")
+        print(f"\nLatency: avg={avg_latency:.2f}s, max={max_latency:.2f}s (target: <=180s)")
 
     # Save results
     output = {

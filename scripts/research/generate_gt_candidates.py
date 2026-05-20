@@ -113,7 +113,7 @@ def main() -> None:
 
     new_pairs: list[dict[str, Any]] = []
 
-    print(f"Generating QA candidates for {len(sampled_nodes)} chunks " f"using {MODEL_NAME}...")
+    print(f"Generating QA candidates for {len(sampled_nodes)} chunks using {MODEL_NAME}...")
 
     for i, node in enumerate(sampled_nodes):
         print(f"[{i + 1}/{len(sampled_nodes)}] Processing chunk {node.id_}...")

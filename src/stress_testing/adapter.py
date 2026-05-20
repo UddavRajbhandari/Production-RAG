@@ -147,7 +147,7 @@ class ReasoningPipelineAdapter:
             logger.info("ReasoningPipeline initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize pipeline: {e}")
-            raise RuntimeError(f"Could not initialize ReasoningPipeline: {e}. " "Ensure LLM service is running.") from e
+            raise RuntimeError(f"Could not initialize ReasoningPipeline: {e}. Ensure LLM service is running.") from e
 
     def query(self, query: str) -> dict[str, object]:
         """

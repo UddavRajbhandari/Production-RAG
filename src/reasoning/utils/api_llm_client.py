@@ -114,8 +114,7 @@ class APILLMClient:
 
                     if attempt < max_retries - 1:
                         logger.info(
-                            f"Rate limited (429), waiting {retry_after}s "
-                            f"before retry {attempt + 2}/{max_retries}..."
+                            f"Rate limited (429), waiting {retry_after}s before retry {attempt + 2}/{max_retries}..."
                         )
                         time.sleep(retry_after)
                         continue

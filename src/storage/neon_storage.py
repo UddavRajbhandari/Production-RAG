@@ -52,6 +52,7 @@ class ChunkMetadata(Base):
     text = Column(Text, nullable=False)
     source_file = Column(String, index=True)
     page_number = Column(Integer)
+    chunk_index = Column(Integer, index=True)  # needed for context expansion
     section_heading = Column(String)  # populated by Phase 1 metadata pipeline
     domain_tag = Column(String, index=True)
     date = Column(String, index=True)  # year extracted from filename
@@ -118,11 +119,14 @@ class NeonStorage:
             try:
                 for node in batch:
                     meta = node.metadata
+                    # Strip NUL characters from text (Postgres doesn't allow them)
+                    clean_text = node.text.replace("\x00", "")
                     record = ChunkMetadata(
                         id=node.id_,
-                        text=node.text,
+                        text=clean_text,
                         source_file=meta.get("source_file"),
                         page_number=meta.get("page_number"),
+                        chunk_index=meta.get("chunk_index"),
                         section_heading=meta.get("section_heading"),
                         domain_tag=meta.get("domain_tag"),
                         date=meta.get("date"),
@@ -183,5 +187,14 @@ class NeonStorage:
         try:
             result: ChunkMetadata | None = session.get(ChunkMetadata, node_id)
             return result
+        finally:
+            session.close()
+
+    def get_chunks_by_source_file(self, source_file: str) -> list[ChunkMetadata]:
+        """Fetch all chunks for a given source file."""
+        session = self.Session()
+        try:
+            stmt = select(ChunkMetadata).where(ChunkMetadata.source_file == source_file)
+            return list(session.execute(stmt).scalars().all())
         finally:
             session.close()

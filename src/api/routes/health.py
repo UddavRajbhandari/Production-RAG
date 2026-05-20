@@ -1,8 +1,11 @@
 """
 Health check endpoint for monitoring and load balancers.
+
+Reports storage mode (cloud vs local) and component health.
 """
 
 import logging
+import os
 
 from fastapi import APIRouter
 
@@ -13,6 +16,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _get_storage_mode() -> dict:
+    """Get current storage mode configuration."""
+    qdrant_mode = "cloud" if os.getenv("QDRANT_URL") else "local"
+    postgres_mode = "neon" if os.getenv("DATABASE_URL") else "sqlite"
+
+    return {
+        "qdrant_mode": qdrant_mode,
+        "postgres_mode": postgres_mode,
+        "bm25_mode": "qdrant_native" if qdrant_mode == "cloud" else "local_pickle",
+    }
+
+
 def _check_qdrant() -> tuple[str, str]:
     """Check Qdrant connection."""
     try:
@@ -20,20 +35,27 @@ def _check_qdrant() -> tuple[str, str]:
 
         client = QdrantStorage()
         client.client.get_collections()
-        return "healthy", "Connected"
+        mode = "cloud" if os.getenv("QDRANT_URL") else "local"
+        return "healthy", f"Connected ({mode} mode)"
     except Exception as e:
         logger.warning("Qdrant health check failed: %s", str(e))
         return "unhealthy", str(e)
 
 
 def _check_bm25() -> tuple[str, str]:
-    """Check BM25 storage."""
+    """Check BM25 storage (local pickle or Qdrant native)."""
     try:
-        from src.storage.bm25_storage import BM25Storage
+        if os.getenv("QDRANT_URL"):
+            from src.storage.qdrant_sparse_storage import QdrantSparseStorage
 
-        bm25 = BM25Storage()
-        bm25.load()
-        return "healthy", f"Loaded {len(bm25.nodes)} nodes"
+            _ = QdrantSparseStorage()
+            return "healthy", "Qdrant native BM25 (cloud)"
+        else:
+            from src.storage.bm25_storage import BM25Storage
+
+            bm25 = BM25Storage()
+            bm25.load()
+            return "healthy", f"Local pickle ({len(bm25.nodes)} nodes)"
     except FileNotFoundError:
         return "unhealthy", "Index not found"
     except Exception as e:
@@ -41,12 +63,29 @@ def _check_bm25() -> tuple[str, str]:
         return "unhealthy", str(e)
 
 
+def _check_postgres() -> tuple[str, str]:
+    """Check Neon/Postgres connection."""
+    try:
+        if os.getenv("DATABASE_URL"):
+            from sqlalchemy import text
+
+            from src.storage.neon_storage import NeonStorage
+
+            storage = NeonStorage()
+            session = storage.Session()
+            session.execute(text("SELECT 1"))
+            session.close()
+            return "healthy", "Neon connected"
+        else:
+            return "healthy", "SQLite (local dev)"
+    except Exception as e:
+        logger.warning("Postgres health check failed: %s", str(e))
+        return "unhealthy", str(e)
+
+
 def _check_llm() -> tuple[str, str]:
     """Check LLM provider connectivity."""
     try:
-        import os
-
-        # Check if any LLM API key is available
         keys = ["OPENROUTER_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY", "HF_TOKEN"]
         available = [k for k in keys if os.getenv(k)]
         if available:
@@ -61,24 +100,29 @@ async def health_check() -> HealthResponse:
     """
     Health check endpoint.
 
-    Returns service status and component health.
+    Returns service status, storage mode, and component health.
     Used by load balancers and monitoring systems.
     """
+    storage_mode = _get_storage_mode()
+
     components: dict[str, str] = {
         "api": "healthy",
+        "storage_mode": f"{storage_mode['qdrant_mode']}/{storage_mode['postgres_mode']}",
+        "bm25": "",
     }
 
-    # Check components
     qdrant_status, qdrant_msg = _check_qdrant()
     components["qdrant"] = qdrant_status
 
     bm25_status, bm25_msg = _check_bm25()
     components["bm25"] = bm25_status
 
+    postgres_status, postgres_msg = _check_postgres()
+    components["postgres"] = postgres_status
+
     llm_status, llm_msg = _check_llm()
     components["llm"] = llm_status
 
-    # Determine overall status
     all_healthy = all(s in ("healthy", "degraded") for s in components.values())
 
     return HealthResponse(
@@ -88,7 +132,9 @@ async def health_check() -> HealthResponse:
             "api": "healthy",
             "qdrant": f"{qdrant_status}: {qdrant_msg}",
             "bm25": f"{bm25_status}: {bm25_msg}",
+            "postgres": f"{postgres_status}: {postgres_msg}",
             "llm": f"{llm_status}: {llm_msg}",
+            "storage_mode": storage_mode,
         },
     )
 

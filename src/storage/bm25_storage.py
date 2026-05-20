@@ -46,6 +46,21 @@ class BM25Storage:
         self.index = BM25Okapi(tokenized_corpus)
         logger.info("BM25 index built with %d nodes.", len(nodes))
 
+    def add_nodes(self, nodes: list[TextNode]) -> None:
+        """
+        Adds new nodes to existing index incrementally.
+
+        Rebuilds the entire index with the combined corpus.
+        Use this for incremental updates during ingest.
+
+        Args:
+            nodes: List of TextNode objects to add
+        """
+        self.nodes.extend(nodes)
+        tokenized_corpus = [node.text.lower().split() for node in self.nodes]
+        self.index = BM25Okapi(tokenized_corpus)
+        logger.info("BM25 index updated: added %d nodes, total %d nodes.", len(nodes), len(self.nodes))
+
     def save(self) -> None:
         """Serialises the index and node list to disk."""
         os.makedirs(os.path.dirname(self.persist_path), exist_ok=True)
@@ -61,7 +76,7 @@ class BM25Storage:
         silently leaving the index in an unusable None state.
         """
         if not os.path.exists(self.persist_path):
-            raise FileNotFoundError(f"BM25 index not found at '{self.persist_path}'. " "Run populate_storage.py first.")
+            raise FileNotFoundError(f"BM25 index not found at '{self.persist_path}'. Run populate_storage.py first.")
         with open(self.persist_path, "rb") as f:
             data = pickle.load(f)
         self.index = data["index"]

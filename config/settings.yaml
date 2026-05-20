@@ -96,16 +96,38 @@ retrieval:
   rrf_k: 60
   sparse_top_k: 20
 storage:
-  bm25:
-    persist_path: storage/bm25_index.pkl
-    use_chunker_suffix: true
-  postgres:
-    schema_name: rag_pipeline
-    use_chunker_suffix: true
+  # Qdrant Configuration
+  # Cloud (production): Set QDRANT_URL and QDRANT_API_KEY env vars
+  # Local (development): Uses host:port below
   qdrant:
+    # Cloud settings (uncomment and set env vars for production)
+    # qdrant_url: https://your-cluster.qdrant.cloud
+    # api_key: ${QDRANT_API_KEY}  # Use env var in production
+
+    # Local/Docker settings (used when QDRANT_URL not set)
     collection_name: production_rag_v1
     distance: Cosine
     host: localhost
     port: 6333
     use_chunker_suffix: true
     vector_size: 384
+
+    # Cloud-specific: auto-enabled when QDRANT_URL is set
+    # Enables sparse vectors for native BM25 support
+    enable_sparse_vectors: true
+
+  # BM25 Configuration
+  # Cloud mode: Uses Qdrant native sparse vectors (no local file)
+  # Local mode: Uses pickle file below
+  bm25:
+    persist_path: storage/bm25_index.pkl
+    use_chunker_suffix: true
+
+  # Neon/Postgres Configuration
+  # Cloud (production): Set DATABASE_URL env var
+  # Local (development): Uses SQLite fallback
+  postgres:
+    # Cloud: Set DATABASE_URL=postgres://...neon.tech/rag?sslmode=require
+    # Local: Uses storage/rag_sqlite.db
+    schema_name: rag_pipeline
+    use_chunker_suffix: true

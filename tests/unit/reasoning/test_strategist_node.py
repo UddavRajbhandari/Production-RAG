@@ -15,8 +15,7 @@ class TestStrategistNode:
     def test_process_valid_answer(self, sample_rag_state_with_context: RAGState) -> None:
         """Test valid answer passes strategist checks."""
         sample_rag_state_with_context["generated_answer"] = (
-            "This is a comprehensive answer with sufficient length "
-            "to pass the minimum length check. Source: test.pdf"
+            "This is a comprehensive answer with sufficient length to pass the minimum length check. Source: test.pdf"
         )
 
         node = StrategistNode()
@@ -41,7 +40,7 @@ class TestStrategistNode:
     ) -> None:
         """Test warning when no source citation present."""
         sample_rag_state_with_context["generated_answer"] = (
-            "This is a comprehensive answer with sufficient length " "to pass the minimum length check."
+            "This is a comprehensive answer with sufficient length to pass the minimum length check."
         )
 
         node = StrategistNode()
