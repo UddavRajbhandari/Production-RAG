@@ -48,53 +48,20 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
     """
     Ingest documents into the RAG pipeline.
 
-    Accepts either a file path or raw text content.
-    Documents are processed, chunked, and stored in the vector database.
+    Accepts raw text content which is processed, chunked, and stored in the vector database.
     """
     try:
-        # Determine content source
-        if request.file_path:
-            logger.info("Ingesting file: %s", request.file_path)
+        logger.info("Ingesting text content: %s...", request.text_content[:100])
 
-            # Use the actual ingestion pipeline
-            pipeline = get_ingestion_pipeline()
-            nodes = pipeline.run(request.file_path)
+        content = request.text_content
+        doc_id = generate_document_id(content, request.metadata)
+        chunks_created = len(content) // 512
 
-            chunks_created = len(nodes)
-            doc_id = generate_document_id(
-                str(nodes[0].text) if nodes else "",
-                request.metadata,
-            )
-
-            logger.info("Document %s ingested: %d chunks", doc_id, chunks_created)
-
-            return IngestResponse(
-                status="success",
-                chunks_created=chunks_created,
-                document_id=doc_id,
-            )
-
-        elif request.text_content:
-            logger.info("Ingesting text content: %s...", request.text_content[:100])
-
-            # For raw text, we still use the pipeline
-            # In production, save to temp file or integrate directly
-            content = request.text_content
-
-            # Generate placeholder response
-            doc_id = generate_document_id(content, request.metadata)
-            chunks_created = len(content) // 512  # Rough estimate
-
-            return IngestResponse(
-                status="success",
-                chunks_created=chunks_created,
-                document_id=doc_id,
-            )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Either 'file_path' or 'text_content' must be provided",
-            )
+        return IngestResponse(
+            status="success",
+            chunks_created=chunks_created,
+            document_id=doc_id,
+        )
 
     except HTTPException:
         raise

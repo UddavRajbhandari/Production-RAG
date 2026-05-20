@@ -43,6 +43,7 @@ JSON Output:
                 prompt=prompt,
                 temperature=0.0,
                 default={"sub_tasks": ["Direct retrieval required."]},
+                llm_api_key=state.get("llm_api_key"),
             )
             state["sub_tasks"] = result.get("sub_tasks", ["Direct retrieval (fallback)"])
             state["error_message"] = None

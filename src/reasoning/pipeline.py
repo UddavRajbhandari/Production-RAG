@@ -72,7 +72,7 @@ class ReasoningPipeline:
 
         self.app = workflow.compile()
 
-    def run(self, query: str) -> RAGState:
+    def run(self, query: str, llm_api_key: str | None = None) -> RAGState:
         """Executes the pipeline for a single query."""
         initial_state: RAGState = {
             "query": query,
@@ -84,6 +84,7 @@ class ReasoningPipeline:
             "error_message": None,
             "node_latency_ms": {},
             "total_latency_ms": 0.0,
+            "llm_api_key": llm_api_key,
         }
 
         logger.info("Starting reasoning pipeline for query: %s", query)

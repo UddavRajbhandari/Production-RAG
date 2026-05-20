@@ -53,6 +53,11 @@ class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=5000, description="User query text")
     stream: bool = Field(default=False, description="Enable streaming response")
     include_sources: bool = Field(default=True, description="Include source documents in response")
+    llm_api_key: str | None = Field(
+        default=None,
+        description="User's own OpenRouter API key (optional). "
+        "If not provided, system attempts Ollama. Key is never stored — used only for this request.",
+    )
 
     model_config = {"json_schema_extra": {"example": {"query": "What is the project about?"}}}
 
@@ -60,9 +65,7 @@ class QueryRequest(BaseModel):
     @classmethod
     def sanitize_query(cls, v: str) -> str:
         """Sanitize query to prevent prompt injection attacks."""
-        # Strip leading/trailing whitespace
         v = v.strip()
-        # Check for potential prompt injection patterns
         injection_pattern = re.compile(
             r"(?i)(system\s*[:\n]|ignore\s+(previous|all|above)\s+instructions|"
             r"(sudo|admin|root)\s*(command|query|request)|"
@@ -71,6 +74,19 @@ class QueryRequest(BaseModel):
         )
         if injection_pattern.search(v):
             raise ValueError("Invalid query pattern detected")
+        return v
+
+    @field_validator("llm_api_key")
+    @classmethod
+    def validate_llm_key(cls, v: str | None) -> str | None:
+        """Light validation — let OpenRouter reject invalid keys."""
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if len(v) < 10:
+            raise ValueError("LLM API key appears too short")
         return v
 
 
@@ -86,14 +102,13 @@ class QueryResponse(BaseModel):
 class IngestRequest(BaseModel):
     """Request model for document ingestion."""
 
-    file_path: str | None = Field(default=None, description="Path to file to ingest")
-    text_content: str | None = Field(default=None, description="Raw text content to ingest")
+    text_content: str = Field(..., description="Raw text content to ingest")
     metadata: dict | None = Field(default=None, description="Optional document metadata")
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "file_path": "/data/documents/report.pdf",
+                "text_content": "Annual report content goes here...",
                 "metadata": {"department": "Academic", "year": "2024"},
             }
         }

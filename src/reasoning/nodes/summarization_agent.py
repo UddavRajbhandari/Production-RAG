@@ -57,6 +57,7 @@ FINAL ANSWER:
             response = self.llm_client.generate(
                 prompt=prompt,
                 temperature=0.0,
+                llm_api_key=state.get("llm_api_key"),
             )
             if response.success:
                 state["generated_answer"] = response.text

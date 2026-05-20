@@ -64,7 +64,7 @@ async def query(request: QueryRequest) -> QueryResponse:
         pipeline = get_reasoning_pipeline()
         logger.info("Processing query: %s...", request.query[:100])
 
-        result = pipeline.run(request.query)
+        result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
 
         latency_ms = (time.time() - start_time) * 1000
 
@@ -89,6 +89,16 @@ async def query(request: QueryRequest) -> QueryResponse:
 
     except Exception as e:
         logger.error("Query processing failed: %s", str(e))
+        error_str = str(e).lower()
+        if "all providers failed" in error_str or "no llm" in error_str:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "no_llm_available",
+                    "message": "No LLM available. Provide your OpenRouter API key in settings, or run Ollama locally.",
+                    "solution": "Add your OpenRouter key in Settings, or start Ollama with: ollama serve",
+                },
+            ) from e
         raise HTTPException(status_code=500, detail="Query processing failed") from e
 
 
@@ -154,7 +164,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
             logger.info("Processing streaming query: %s...", request.query[:100])
 
             # Run pipeline and stream result
-            result = pipeline.run(request.query)
+            result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
             answer = result.get("generated_answer", "")
 
             # Stream in chunks (simulated - in production, stream token by token)
@@ -167,7 +177,12 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
 
         except Exception as e:
             logger.error("Streaming query failed: %s", str(e))
-            yield f"data: Error: {str(e)}\n\n"
+            error_str = str(e).lower()
+            if "all providers failed" in error_str or "no llm" in error_str:
+                no_llm_msg = "No LLM available. Add your OpenRouter key in Settings, or run Ollama locally."
+                yield f'data: {{"error":"no_llm_available","message":"{no_llm_msg}"}}\n\n'
+            else:
+                yield f"data: Error: {str(e)}\n\n"
 
     return StreamingResponse(
         generate_stream(),

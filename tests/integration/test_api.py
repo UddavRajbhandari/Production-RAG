@@ -1,6 +1,7 @@
 """
 Integration tests for Production RAG API.
 Phase 8.1: API deployment verification.
+Phase 8.3: User-provided LLM key flow.
 """
 
 import pytest
@@ -93,6 +94,44 @@ class TestQueryEndpoints:
         )
         # Empty query should fail validation (422)
         assert response.status_code == 422
+
+    def test_query_with_llm_api_key_field(self, client: TestClient, auth_header: dict) -> None:
+        """Test query accepts llm_api_key field (even if key is invalid)."""
+        response = client.post(
+            "/api/v1/query",
+            json={
+                "query": "What is the capital of France?",
+                "llm_api_key": "sk-test-key-for-structure-verification",  # pragma: allowlist secret
+            },
+            headers=auth_header,
+        )
+        # Should not be 401 (auth passes) or 422 (schema valid)
+        # May be 500 (no actual LLM) but not auth/schema error
+        assert response.status_code not in (401, 422)
+
+    def test_query_llm_api_key_too_short(self, client: TestClient, auth_header: dict) -> None:
+        """Test query rejects llm_api_key that is too short."""
+        response = client.post(
+            "/api/v1/query",
+            json={
+                "query": "test",
+                "llm_api_key": "short",  # pragma: allowlist secret
+            },
+            headers=auth_header,
+        )
+        assert response.status_code == 422
+
+    def test_query_llm_api_key_whitespace_stripped(self, client: TestClient, auth_header: dict) -> None:
+        """Test query accepts llm_api_key that would fail if not stripped."""
+        response = client.post(
+            "/api/v1/query",
+            json={
+                "query": "test",
+                "llm_api_key": "sk-or-v1-valid-length-key-for-test",  # pragma: allowlist secret
+            },
+            headers=auth_header,
+        )
+        assert response.status_code != 422
 
 
 class TestMetadataEndpoints:

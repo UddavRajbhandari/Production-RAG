@@ -100,29 +100,37 @@ class HybridRetriever:
 
     def _expand_context_cloud(self, nodes: list[dict[str, Any]], window_size: int = 1) -> list[dict[str, Any]]:
         """Expand context using Qdrant payload metadata."""
-        from src.storage.neon_storage import NeonStorage
+        try:
+            from src.storage.neon_storage import NeonStorage
 
-        neon = NeonStorage()
-        node_lookup: dict[tuple[str, int], dict] = {}
+            neon = NeonStorage()
+            node_lookup: dict[tuple[str, int], dict] = {}
 
-        for node_dict in nodes:
-            source = node_dict["metadata"].get("source_file")
-            chunk_idx = node_dict["metadata"].get("chunk_index")
-            if source and chunk_idx is not None:
-                for i in range(chunk_idx - window_size, chunk_idx + window_size + 1):
-                    if (source, i) not in node_lookup:
-                        chunks = neon.get_chunks_by_source_file(source)
-                        for c in chunks:
-                            if c.chunk_index == i:
-                                node_lookup[(source, i)] = {
-                                    "text": c.text,
-                                    "metadata": {
-                                        "source_file": c.source_file,
-                                        "chunk_index": c.chunk_index,
-                                    },
-                                }
+            for node_dict in nodes:
+                source = node_dict["metadata"].get("source_file")
+                chunk_idx = node_dict["metadata"].get("chunk_index")
+                if source and chunk_idx is not None:
+                    for i in range(chunk_idx - window_size, chunk_idx + window_size + 1):
+                        if (source, i) not in node_lookup:
+                            try:
+                                chunks = neon.get_chunks_by_source_file(source)
+                                for c in chunks:
+                                    if getattr(c, "chunk_index", None) == i:
+                                        node_lookup[(source, i)] = {
+                                            "text": c.text,
+                                            "metadata": {
+                                                "source_file": c.source_file,
+                                                "chunk_index": getattr(c, "chunk_index", None),
+                                            },
+                                        }
+                            except Exception as e:
+                                logger.warning("Failed to get chunks from Neon: %s", e)
+                                break
 
-        return self._do_expand_context(nodes, node_lookup, window_size)
+            return self._do_expand_context(nodes, node_lookup, window_size)
+        except Exception as e:
+            logger.warning("Context expansion failed: %s", e)
+            return nodes
 
     def _do_expand_context(
         self,
@@ -174,18 +182,51 @@ class HybridRetriever:
         query_vector = self.embed_model.encode(query).tolist()
 
         query_filter = None
-        if year_filter:
-            query_filter = models.Filter(
-                must=[models.FieldCondition(key="date", match=models.MatchValue(value=year_filter))]
-            )
+        if year_filter and self.use_cloud_bm25:
+            try:
+                query_filter = models.Filter(
+                    must=[models.FieldCondition(key="date", match=models.MatchValue(value=year_filter))]
+                )
+            except Exception as e:
+                logger.warning("Failed to create date filter: %s - proceeding without filter", e)
 
-        response = self.qdrant.client.query_points(
-            collection_name=self.qdrant.collection_name,
-            query=query_vector,
-            query_filter=query_filter,
-            limit=self.dense_k,
-        )
-        return list(response.points)
+        try:
+            if self.use_cloud_bm25:
+                response = self.qdrant.client.query_points(
+                    collection_name=self.qdrant.collection_name,
+                    query=query_vector,
+                    query_filter=query_filter,
+                    limit=self.dense_k,
+                    using="dense",
+                )
+            else:
+                response = self.qdrant.client.query_points(
+                    collection_name=self.qdrant.collection_name,
+                    query=query_vector,
+                    query_filter=query_filter,
+                    limit=self.dense_k,
+                )
+            return list(response.points)
+        except Exception as e:
+            logger.warning("Dense search failed with filter, retrying without: %s", e)
+            try:
+                if self.use_cloud_bm25:
+                    response = self.qdrant.client.query_points(
+                        collection_name=self.qdrant.collection_name,
+                        query=query_vector,
+                        limit=self.dense_k,
+                        using="dense",
+                    )
+                else:
+                    response = self.qdrant.client.query_points(
+                        collection_name=self.qdrant.collection_name,
+                        query=query_vector,
+                        limit=self.dense_k,
+                    )
+                return list(response.points)
+            except Exception as e2:
+                logger.error("Dense search failed completely: %s", e2)
+                return []
 
     def _sparse_search(self, query: str, year_filter: str | None = None) -> list[TextNode]:
         """Keyword search using appropriate BM25 backend (cloud or local)."""
@@ -227,7 +268,10 @@ class HybridRetriever:
 
         sorted_ids = sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
-        bm25_lookup: dict[str, TextNode] = {node.id_: node for node in self.bm25.nodes}
+        bm25_lookup: dict[str, TextNode] = (
+            {node.id_: node for node in self.bm25.nodes} if hasattr(self.bm25, "nodes") else {}
+        )
+        sparse_lookup: dict[str, TextNode] = {str(n.id_): n for n in sparse_nodes}
         qdrant_lookup: dict[str, Any] = {str(hit.id): hit for hit in dense_hits}
 
         final_results: list[dict[str, Any]] = []
@@ -241,6 +285,17 @@ class HybridRetriever:
                         "metadata": node.metadata,
                         "rrf_score": rrf_score,
                         "source": "hybrid",
+                    }
+                )
+            elif node_id in sparse_lookup:
+                node = sparse_lookup[node_id]
+                final_results.append(
+                    {
+                        "id": node_id,
+                        "text": node.text,
+                        "metadata": node.metadata,
+                        "rrf_score": rrf_score,
+                        "source": "sparse_only",
                     }
                 )
             elif node_id in qdrant_lookup:

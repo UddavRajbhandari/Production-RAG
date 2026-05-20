@@ -47,6 +47,7 @@ JSON Output:
                 prompt=prompt,
                 temperature=0.0,
                 default={"hallucination": False, "missing_claims": []},
+                llm_api_key=state.get("llm_api_key"),
             )
             if result.get("hallucination", False):
                 state["validation_passed"] = False

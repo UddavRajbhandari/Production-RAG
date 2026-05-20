@@ -40,6 +40,7 @@ class APILLMClient:
         format_json: bool = False,
         temperature: float = 0.0,
         custom_model: str | None = None,
+        api_key_override: str | None = None,
     ) -> dict[str, Any]:
         """
         Call any OpenAI-compatible endpoint.
@@ -49,15 +50,18 @@ class APILLMClient:
             format_json: Whether to request JSON response
             temperature: Sampling temperature
             custom_model: Optional model override
+            api_key_override: Optional API key to use instead of the configured key.
+                When provided, this key is used for this single request only.
 
         Returns:
             Dict with text, latency_ms, and success status
         """
         start_time = time.perf_counter()
         model = custom_model or self.config.model
+        effective_key = api_key_override or self.config.api_key
 
         headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
+            "Authorization": f"Bearer {effective_key}",
             "Content-Type": "application/json",
         }
 

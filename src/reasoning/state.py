@@ -28,3 +28,6 @@ class RAGState(TypedDict):
     # --- Performance Tracking (Strategic Requirement #2) ---
     node_latency_ms: dict[str, float]
     total_latency_ms: float
+
+    # --- LLM Configuration ---
+    llm_api_key: str | None  # User-provided key for this request (optional)
