@@ -27,9 +27,17 @@ class Settings(BaseSettings):
     llm_provider: str = Field(default="openrouter", alias="LLM_PROVIDER")
 
     # Storage Configuration
+    # Local/Docker
     qdrant_host: str = Field(default="localhost", alias="QDRANT_HOST")
     qdrant_port: int = Field(default=6333, alias="QDRANT_PORT")
     qdrant_collection: str = Field(default="production_rag_v1", alias="QDRANT_COLLECTION")
+
+    # Cloud (Qdrant Cloud)
+    qdrant_url: str | None = Field(default=None, alias="QDRANT_URL")
+    qdrant_api_key: str = Field(default="", alias="QDRANT_API_KEY")
+
+    # Neon/Postgres
+    database_url: str | None = Field(default=None, alias="DATABASE_URL")
 
     model_config = {
         "env_file": ".env",

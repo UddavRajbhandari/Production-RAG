@@ -2,23 +2,33 @@
 Retrieval Infrastructure Module
 Implements the Hybrid Search and Context Expansion logic.
 Combines dense and sparse results using Reciprocal Rank Fusion (RRF).
+
+Supports dual BM25 modes:
+- Cloud mode: Uses Qdrant native sparse vectors (fast, server-side)
+- Local mode: Uses local pickle BM25 (development/fallback)
 """
 
 import concurrent.futures
 import logging
+import os
 import re
 from typing import Any
 
 import yaml
 from llama_index.core.schema import TextNode
 from qdrant_client.http import models
-from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
 
 from src.storage.bm25_storage import BM25Storage
+from src.storage.qdrant_sparse_storage import QdrantSparseStorage
 from src.storage.qdrant_storage import QdrantStorage
 
 logger = logging.getLogger(__name__)
+
+
+def should_use_qdrant_bm25() -> bool:
+    """Check if Qdrant Cloud with native BM25 is available."""
+    return bool(os.getenv("QDRANT_URL"))
 
 
 class HybridRetriever:
@@ -30,8 +40,17 @@ class HybridRetriever:
             self.config = yaml.safe_load(f)
 
         self.qdrant = QdrantStorage()
-        self.bm25 = BM25Storage()
-        self.bm25.load()
+
+        self.use_cloud_bm25 = should_use_qdrant_bm25()
+        self.bm25: BM25Storage | QdrantSparseStorage
+
+        if self.use_cloud_bm25:
+            self.bm25 = QdrantSparseStorage()
+            logger.info("HybridRetriever: Using Qdrant native BM25 (cloud mode)")
+        else:
+            self.bm25 = BM25Storage()
+            self.bm25.load()
+            logger.info("HybridRetriever: Using local BM25 pickle (local mode)")
 
         self.embed_model = SentenceTransformer(self.config["models"]["embedding"])
 
@@ -40,7 +59,6 @@ class HybridRetriever:
         self.rrf_k = self.config["retrieval"]["rrf_k"]
         self.rerank_pool_size = self.config["retrieval"]["rerank_pool_size"]
 
-        # Speed Optimization: Persistent thread pool to avoid spawn overhead
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
     def search(self, query: str) -> list[dict[str, Any]]:
@@ -48,29 +66,71 @@ class HybridRetriever:
         Executes parallel dense and sparse searches.
         Applies Reciprocal Rank Fusion (RRF) and returns top candidates.
         """
-        # Accuracy Optimization: Metadata Filter Extraction
         year_filter = self._extract_year_filter(query)
 
-        # Speed Optimization: Parallel Retrieval using persistent executor
         dense_future = self._executor.submit(self._dense_search, query, year_filter)
         sparse_future = self._executor.submit(self._sparse_search, query, year_filter)
 
         dense_results = dense_future.result()
         sparse_results = sparse_future.result()
 
-        # 3. Reciprocal Rank Fusion (RRF)
         fused_results = self._reciprocal_rank_fusion(dense_results, sparse_results)
 
-        # Speed Optimization: Prune candidate pool for the reranker
         return fused_results[: self.rerank_pool_size]
 
     def expand_context(self, nodes: list[dict[str, Any]], window_size: int = 1) -> list[dict[str, Any]]:
         """
         Returns a new list of result dicts enriched with surrounding chunk text.
+
+        In local mode: Uses BM25 nodes for context lookup
+        In cloud mode: Uses Neon Postgres for context lookup (via payload)
         """
-        node_lookup: dict[tuple[str, int], TextNode] = {
-            (n.metadata["source_file"], n.metadata["chunk_index"]): n for n in self.bm25.nodes
-        }
+        if self.use_cloud_bm25:
+            return self._expand_context_cloud(nodes, window_size)
+        return self._expand_context_local(nodes, window_size)
+
+    def _expand_context_local(self, nodes: list[dict[str, Any]], window_size: int = 1) -> list[dict[str, Any]]:
+        """Expand context using local BM25 nodes."""
+        if hasattr(self.bm25, "nodes"):
+            node_lookup: dict[tuple[str, int], TextNode] = {
+                (n.metadata["source_file"], n.metadata["chunk_index"]): n for n in self.bm25.nodes
+            }
+            return self._do_expand_context(nodes, node_lookup, window_size)
+        return nodes
+
+    def _expand_context_cloud(self, nodes: list[dict[str, Any]], window_size: int = 1) -> list[dict[str, Any]]:
+        """Expand context using Qdrant payload metadata."""
+        from src.storage.neon_storage import NeonStorage
+
+        neon = NeonStorage()
+        node_lookup: dict[tuple[str, int], dict] = {}
+
+        for node_dict in nodes:
+            source = node_dict["metadata"].get("source_file")
+            chunk_idx = node_dict["metadata"].get("chunk_index")
+            if source and chunk_idx is not None:
+                for i in range(chunk_idx - window_size, chunk_idx + window_size + 1):
+                    if (source, i) not in node_lookup:
+                        chunks = neon.get_chunks_by_source_file(source)
+                        for c in chunks:
+                            if c.chunk_index == i:
+                                node_lookup[(source, i)] = {
+                                    "text": c.text,
+                                    "metadata": {
+                                        "source_file": c.source_file,
+                                        "chunk_index": c.chunk_index,
+                                    },
+                                }
+
+        return self._do_expand_context(nodes, node_lookup, window_size)
+
+    def _do_expand_context(
+        self,
+        nodes: list[dict[str, Any]],
+        node_lookup: dict[tuple[str, int], Any],
+        window_size: int,
+    ) -> list[dict[str, Any]]:
+        """Core context expansion logic."""
         expanded: list[dict[str, Any]] = []
 
         for node_dict in nodes:
@@ -81,7 +141,10 @@ class HybridRetriever:
             for i in range(idx - window_size, idx + window_size + 1):
                 neighbour = node_lookup.get((source, i))
                 if neighbour is not None:
-                    context_parts.append(neighbour.text)
+                    if hasattr(neighbour, "text"):
+                        context_parts.append(neighbour.text)
+                    else:
+                        context_parts.append(neighbour.get("text", ""))
                 elif i != idx:
                     logger.debug(
                         "expand_context: chunk (%s, %d) not found — boundary chunk.",
@@ -102,7 +165,6 @@ class HybridRetriever:
 
         year = match.group(1)
         if year.startswith("FY"):
-            # Normalize FY23 -> 2023
             short_year = match.group(2)
             return f"20{short_year}"
         return year
@@ -111,14 +173,12 @@ class HybridRetriever:
         """Vector search against Qdrant with optional hard metadata filters."""
         query_vector = self.embed_model.encode(query).tolist()
 
-        # Accuracy Optimization: Hard filtering by year if present
         query_filter = None
         if year_filter:
             query_filter = models.Filter(
                 must=[models.FieldCondition(key="date", match=models.MatchValue(value=year_filter))]
             )
 
-        # Fetch points and ensure we return a list
         response = self.qdrant.client.query_points(
             collection_name=self.qdrant.collection_name,
             query=query_vector,
@@ -128,7 +188,10 @@ class HybridRetriever:
         return list(response.points)
 
     def _sparse_search(self, query: str, year_filter: str | None = None) -> list[TextNode]:
-        """Keyword search against BM25 with optional year pre-filtering."""
+        """Keyword search using appropriate BM25 backend (cloud or local)."""
+        if self.use_cloud_bm25:
+            return self.bm25.search(query, top_k=self.sparse_k)
+
         if year_filter:
             filtered_nodes = [n for n in self.bm25.nodes if n.metadata.get("date") == year_filter]
             if not filtered_nodes:
@@ -137,6 +200,8 @@ class HybridRetriever:
                     year_filter,
                 )
                 return self.bm25.search(query, top_k=self.sparse_k)
+
+            from rank_bm25 import BM25Okapi
 
             tokenized_corpus = [node.text.lower().split() for node in filtered_nodes]
             temp_bm25 = BM25Okapi(tokenized_corpus)

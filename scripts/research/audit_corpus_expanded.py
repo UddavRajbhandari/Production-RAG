@@ -25,7 +25,7 @@ def audit_pdf(file_path: str) -> None:
             page = doc[i]
             text = page.get_text().strip()
             tables = page.find_tables()
-            print(f"Page {i + 1}: {len(text)} chars, " f"{len(tables.tables)} potential tables detected")
+            print(f"Page {i + 1}: {len(text)} chars, {len(tables.tables)} potential tables detected")
             if len(text) < 50:
                 print(f"  [!] Note: Very low text on page {i + 1} (Cover/Image/Separator)")
         doc.close()

@@ -88,7 +88,7 @@ def run_stress_tests(
         for result in report.results:
             status = "PASS" if result.defense_triggered else "FAIL"
             latency = f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
-            print(f"  [{status}] {result.attack_name} ({result.category.value}) " f"- {latency}")
+            print(f"  [{status}] {result.attack_name} ({result.category.value}) - {latency}")
             if result.notes:
                 print(f"         Note: {result.notes}")
 
