@@ -187,3 +187,50 @@ async def get_departments() -> list[str]:
     except Exception as e:
         logger.error("Departments query failed: %s", str(e))
         raise HTTPException(status_code=500, detail="Departments query failed") from e
+
+
+@router.get("/metadata/documents")
+async def get_documents() -> list[dict[str, Any]]:
+    """
+    Get list of source documents with chunk counts.
+
+    Returns distinct source_file values from the metadata database
+    along with their chunk counts.
+    """
+    try:
+        neon = get_neon_storage()
+        session = neon.Session()
+
+        from sqlalchemy import func, select
+
+        from src.storage.neon_storage import ChunkMetadata
+
+        results = session.execute(
+            select(
+                ChunkMetadata.source_file,
+                func.count(ChunkMetadata.id),
+                func.min(ChunkMetadata.date),
+                func.min(ChunkMetadata.department),
+            )
+            .where(ChunkMetadata.source_file.isnot(None))
+            .group_by(ChunkMetadata.source_file)
+            .order_by(ChunkMetadata.source_file)
+        ).all()
+
+        session.close()
+
+        documents = [
+            {
+                "source_file": row[0],
+                "chunk_count": row[1],
+                "year": row[2] or "Unknown",
+                "department": row[3] or "General",
+            }
+            for row in results
+        ]
+
+        return documents
+
+    except Exception as e:
+        logger.error("Documents query failed: %s", str(e))
+        raise HTTPException(status_code=500, detail="Documents query failed") from e

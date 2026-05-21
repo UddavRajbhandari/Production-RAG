@@ -97,6 +97,15 @@ class QueryResponse(BaseModel):
     sources: list[dict] | None = Field(default=None, description="Source documents used")
     latency_ms: float = Field(..., description="Total processing latency in milliseconds")
     validation_passed: bool = Field(..., description="Whether response passed validation")
+    error_message: str | None = Field(default=None, description="Validation error message from nodes")
+    node_evaluations: list[dict] | None = Field(
+        default=None, description="Per-node evaluation results from Gatekeeper, Auditor, Strategist"
+    )
+    ragas_scores: dict[str, float] | None = Field(
+        default=None,
+        description="Per-query RAGAS evaluation scores (context_precision, answer_relevancy, "
+        "answer_completeness, faithfulness)",
+    )
 
 
 class IngestRequest(BaseModel):

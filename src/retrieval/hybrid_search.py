@@ -61,6 +61,15 @@ class HybridRetriever:
 
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
+    def reload_bm25(self) -> None:
+        """Reload BM25 index from disk after incremental ingest."""
+        if not self.use_cloud_bm25 and isinstance(self.bm25, BM25Storage):
+            try:
+                self.bm25.load()
+                logger.info("BM25 index reloaded from disk")
+            except Exception as e:
+                logger.warning("Failed to reload BM25 index: %s", e)
+
     def search(self, query: str) -> list[dict[str, Any]]:
         """
         Executes parallel dense and sparse searches.

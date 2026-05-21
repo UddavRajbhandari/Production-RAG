@@ -1,4 +1,4 @@
-import type { QueryRequest, QueryResponse, HealthStatus } from '@/types';
+import type { QueryRequest, QueryResponse, RetrieveResponse, HealthStatus, DocumentInfo, Source, NodeEvaluation, RagasScores } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -40,7 +40,14 @@ export async function query(request: QueryRequest): Promise<QueryResponse> {
 export async function queryStream(
   request: QueryRequest,
   onChunk: (text: string) => void,
-  onSources: (sources: QueryResponse['sources']) => void,
+  onMetadata: (meta: {
+    sources: Source[] | null;
+    node_evaluations: NodeEvaluation[] | null;
+    validation_passed: boolean;
+    latency_ms: number;
+    error_message: string | null;
+    ragas_scores: RagasScores | null;
+  }) => void,
   onDone: () => void,
   onError: (error: string) => void
 ): Promise<void> {
@@ -91,10 +98,21 @@ export async function queryStream(
 
         if (data.startsWith('{')) {
           try {
-            const parsed = JSON.parse(data) as { error?: string; message?: string };
+            const parsed = JSON.parse(data) as Record<string, unknown>;
             if (parsed.error) {
-              onError(parsed.message || parsed.error);
+              onError((parsed.message as string) || (parsed.error as string));
               return;
+            }
+            if ('sources' in parsed || 'node_evaluations' in parsed) {
+              onMetadata(parsed as {
+                sources: Source[] | null;
+                node_evaluations: NodeEvaluation[] | null;
+                validation_passed: boolean;
+                latency_ms: number;
+                error_message: string | null;
+                ragas_scores: RagasScores | null;
+              });
+              continue;
             }
           } catch {
             // Not JSON, treat as text chunk
@@ -108,6 +126,15 @@ export async function queryStream(
   } catch (err) {
     onError(err instanceof Error ? err.message : 'Stream interrupted');
   }
+}
+
+export async function retrieveQuery(request: QueryRequest): Promise<RetrieveResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/query/retrieve`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ query: request.query }),
+  });
+  return handleResponse<RetrieveResponse>(response);
 }
 
 export async function checkHealth(): Promise<HealthStatus> {
@@ -156,4 +183,12 @@ export async function getDepartments(): Promise<string[]> {
     headers: getHeaders(),
   });
   return handleResponse<string[]>(response);
+}
+
+export async function getDocuments(): Promise<DocumentInfo[]> {
+  const response = await fetch(`${API_BASE}/api/v1/metadata/documents`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+  return handleResponse<DocumentInfo[]>(response);
 }

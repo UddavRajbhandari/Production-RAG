@@ -37,7 +37,9 @@ class PDFHandler(BaseHandler):
         blocks: list[dict[str, Any]] = []
         doc = fitz.open(file_path)
         for page_num, page in enumerate(doc):
-            text = page.get_text().strip()
+            words = page.get_text("words")
+            words.sort(key=lambda w: (w[3], w[0]))
+            text = " ".join(w[4] for w in words).strip()
             blocks.append(
                 {
                     "type": "page",

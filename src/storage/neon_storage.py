@@ -29,7 +29,10 @@ from sqlalchemy import (
     String,
     Text,
     create_engine,
+    event,
+    inspect,
     select,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -89,7 +92,39 @@ class NeonStorage:
             logger.info("Using database: %s", db_url.split("@")[-1])  # hide credentials
 
         self.engine = create_engine(db_url)
+        if db_url.startswith("postgresql"):
+
+            @event.listens_for(self.engine, "connect")
+            def _set_statement_timeout(dbapi_connection: object, connection_record: object) -> None:
+                if hasattr(dbapi_connection, "cursor"):
+                    cursor = dbapi_connection.cursor()
+                    cursor.execute("SET statement_timeout = 60000")
+                    cursor.close()
+
         self.Session = sessionmaker(bind=self.engine)
+
+    def _migrate_schema(self) -> None:
+        """Add missing columns to existing tables without dropping data."""
+        try:
+            inspector = inspect(self.engine)
+            if "chunk_metadata" not in inspector.get_table_names():
+                return
+            existing = {c["name"] for c in inspector.get_columns("chunk_metadata")}
+            wanted = {
+                "chunk_index": "INTEGER",
+                "section_heading": "VARCHAR",
+                "domain_tag": "VARCHAR",
+                "date": "VARCHAR",
+                "department": "VARCHAR",
+            }
+            with self.engine.connect() as conn:
+                for col_name, col_type in wanted.items():
+                    if col_name not in existing:
+                        conn.execute(text(f"ALTER TABLE chunk_metadata ADD COLUMN {col_name} {col_type}"))
+                        logger.info("Added missing column '%s' to chunk_metadata", col_name)
+                conn.commit()
+        except Exception as e:
+            logger.warning("Schema migration skipped (non-fatal): %s", e)
 
     def create_tables(self, force_recreate: bool = False) -> None:
         """Creates all tables defined in the schema."""
@@ -97,6 +132,7 @@ class NeonStorage:
             Base.metadata.drop_all(self.engine)
             logger.info("Dropped existing metadata schema.")
         Base.metadata.create_all(self.engine)
+        self._migrate_schema()
         logger.info("Schema initialised (chunk_metadata table ready).")
 
     def insert_metadata(
@@ -105,45 +141,56 @@ class NeonStorage:
         batch_size: int = _INSERT_BATCH_SIZE,
     ) -> None:
         """
-        Upserts metadata records for a list of nodes in batches.
+        Bulk-inserts metadata records for a list of nodes in batches.
 
-        Uses session.merge() for upsert semantics — safe to re-run after
-        re-ingestion without creating duplicates.
+        Uses add_all() for fast bulk insert (single round-trip per batch).
+        Falls back to individual merge() if bulk insert fails (e.g. conflict).
         """
         total = len(nodes)
         inserted = 0
+
+        def _build_record(node: TextNode) -> ChunkMetadata:
+            meta = node.metadata
+            return ChunkMetadata(
+                id=node.id_,
+                text=node.text.replace("\x00", ""),
+                source_file=meta.get("source_file"),
+                page_number=meta.get("page_number"),
+                chunk_index=meta.get("chunk_index"),
+                section_heading=meta.get("section_heading"),
+                domain_tag=meta.get("domain_tag"),
+                date=meta.get("date"),
+                department=meta.get("department"),
+                version=meta.get("version", "v1.1"),
+                full_metadata=meta,
+            )
 
         for start in range(0, total, batch_size):
             batch = nodes[start : start + batch_size]
             session = self.Session()
             try:
-                for node in batch:
-                    meta = node.metadata
-                    # Strip NUL characters from text (Postgres doesn't allow them)
-                    clean_text = node.text.replace("\x00", "")
-                    record = ChunkMetadata(
-                        id=node.id_,
-                        text=clean_text,
-                        source_file=meta.get("source_file"),
-                        page_number=meta.get("page_number"),
-                        chunk_index=meta.get("chunk_index"),
-                        section_heading=meta.get("section_heading"),
-                        domain_tag=meta.get("domain_tag"),
-                        date=meta.get("date"),
-                        department=meta.get("department"),
-                        version=meta.get("version", "v1.1"),
-                        full_metadata=meta,
-                    )
-                    session.merge(record)
+                records = [_build_record(n) for n in batch]
+                session.add_all(records)
                 session.commit()
                 inserted += len(batch)
-                logger.info("Inserted %d/%d metadata records.", inserted, total)
-            except Exception as exc:
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("Inserted %d/%d metadata records.", inserted, total)
+            except Exception:
                 session.rollback()
-                logger.error("Batch insert failed at offset %d: %s", start, exc)
-                raise
+                logger.warning("Bulk insert failed at offset %d, falling back to individual merge", start)
+                try:
+                    for node in batch:
+                        record = _build_record(node)
+                        session.merge(record)
+                    session.commit()
+                    inserted += len(batch)
+                except Exception as exc2:
+                    session.rollback()
+                    logger.error("Merge insert also failed at offset %d: %s", start, exc2)
+                    raise
             finally:
                 session.close()
+        logger.info("Inserted %d metadata records.", inserted)
 
     def query_by_filters(
         self,

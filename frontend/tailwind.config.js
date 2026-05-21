@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,23 +9,23 @@ module.exports = {
     extend: {
       colors: {
         background: {
-          primary: '#0a0a0f',
-          surface: '#111118',
-          muted: '#1a1a24',
+          primary: 'var(--bg-primary)',
+          surface: 'var(--bg-surface)',
+          muted: 'var(--bg-muted)',
         },
         border: {
-          DEFAULT: '#2a2a3a',
-          subtle: '#1e1e2a',
+          DEFAULT: 'var(--border)',
+          subtle: 'var(--border-subtle)',
         },
         accent: {
-          primary: '#6ee7b7',
-          'primary-muted': '#134e4a',
-          secondary: '#818cf8',
+          primary: 'var(--accent-primary)',
+          'primary-muted': 'var(--accent-primary-muted)',
+          secondary: 'var(--accent-secondary)',
         },
         text: {
-          primary: '#f1f5f9',
-          secondary: '#94a3b8',
-          muted: '#475569',
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
         },
         status: {
           success: '#22c55e',

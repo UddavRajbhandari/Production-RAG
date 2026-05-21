@@ -12,11 +12,27 @@ export interface Source {
   metadata?: Record<string, unknown>;
 }
 
+export interface NodeEvaluation {
+  node: string;
+  latency_ms: number;
+  evaluation: string;
+}
+
+export interface RagasScores {
+  context_precision: number;
+  answer_relevancy: number;
+  answer_completeness: number;
+  faithfulness: number;
+}
+
 export interface QueryResponse {
   answer: string;
   sources: Source[] | null;
   latency_ms: number;
   validation_passed: boolean;
+  error_message?: string | null;
+  node_evaluations?: NodeEvaluation[] | null;
+  ragas_scores?: RagasScores | null;
 }
 
 export interface SSEChunk {
@@ -60,11 +76,31 @@ export interface ChatMessage {
   sources?: Source[];
   error?: string;
   timestamp: number;
+  node_evaluations?: NodeEvaluation[] | null;
+  validation_passed?: boolean;
+  latency_ms?: number;
+  error_message?: string | null;
+  ragas_scores?: RagasScores | null;
 }
 
-export interface QueryHistoryItem {
-  id: string;
+export interface DocumentInfo {
+  source_file: string;
+  chunk_count: number;
+  year: string;
+  department: string;
+}
+
+export interface RetrieveResponse {
   query: string;
-  timestamp: number;
-  answerPreview: string;
+  results: Source[];
+  count: number;
+}
+
+export interface ChatSession {
+  id: string;
+  name: string;
+  files: { name: string; timestamp: number }[];
+  messages: ChatMessage[];
+  created_at: number;
+  updated_at: number;
 }

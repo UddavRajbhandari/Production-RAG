@@ -95,7 +95,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting Production RAG API...")
 
     try:
-        get_hybrid_retriever()
+        retriever = get_hybrid_retriever()
+        app.state.hybrid_retriever = retriever
         logger.info("Storage layer initialized: Qdrant + BM25")
         _storage_initialized = True
     except Exception as e:

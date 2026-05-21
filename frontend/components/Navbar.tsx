@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, MessageSquare, Settings, FileText } from 'lucide-react';
+import { MessageSquare, Settings } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/documents', label: 'Documents', icon: FileText },
-  { href: '/query', label: 'Query', icon: MessageSquare },
+  { href: '/', label: 'Query', icon: MessageSquare },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -16,13 +15,13 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background-surface/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-13 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-13 max-w-[1600px] items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="6" fill="#111118" />
-            <circle cx="16" cy="16" r="9" fill="none" stroke="#6ee7b7" strokeWidth="1.5" />
-            <circle cx="16" cy="16" r="4" fill="none" stroke="#6ee7b7" strokeWidth="1.5" />
-            <circle cx="16" cy="16" r="1.5" fill="#6ee7b7" />
+            <rect width="32" height="32" rx="6" fill="var(--bg-surface)" />
+            <circle cx="16" cy="16" r="9" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" />
+            <circle cx="16" cy="16" r="4" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" />
+            <circle cx="16" cy="16" r="1.5" fill="var(--accent-primary)" />
           </svg>
           <span className="font-display text-base font-semibold tracking-wide text-text-primary">
             Production<span className="text-accent-primary">RAG</span>
@@ -47,6 +46,8 @@ export default function Navbar() {
               </Link>
             );
           })}
+          <span className="mx-2 h-5 w-px bg-border" />
+          <ThemeToggle />
         </nav>
       </div>
     </header>
