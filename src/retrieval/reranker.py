@@ -6,13 +6,14 @@ Uses ONNX Runtime when available for lower CPU latency.
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
 _ONNX_MODEL_DIR = "storage/reranker_onnx"
+_ONNX_MODEL_PATH = os.path.join(_ONNX_MODEL_DIR, "model.onnx")
 
 
 class CrossEncoderReranker:
@@ -28,32 +29,35 @@ class CrossEncoderReranker:
 
     def _load_model(self) -> None:
         """Loads the ONNX reranker if present, else falls back to PyTorch."""
-        if os.path.isdir(_ONNX_MODEL_DIR):
+        if os.path.isfile(_ONNX_MODEL_PATH):
             try:
                 self._load_onnx()
                 return
-            except ImportError as exc:
+            except Exception as exc:
                 logger.warning(
-                    "ONNX reranker path found but dependencies unavailable (%s). Falling back to PyTorch CrossEncoder.",
+                    "ONNX reranker path found but failed to load (%s). Falling back to PyTorch CrossEncoder.",
                     exc,
                 )
 
         logger.warning(
             "ONNX model not found at '%s'. Falling back to PyTorch CrossEncoder. "
             "Run scripts/export_reranker_onnx.py to improve latency.",
-            _ONNX_MODEL_DIR,
+            _ONNX_MODEL_PATH,
         )
         self._load_pytorch()
 
     def _load_onnx(self) -> None:
-        """Loads the ONNX Runtime model and tokenizer."""
-        from optimum.onnxruntime import ORTModelForSequenceClassification
+        """Loads the ONNX model directly via ONNX Runtime."""
+        import onnxruntime as ort  # type: ignore
         from transformers import AutoTokenizer
 
         self._tokenizer = AutoTokenizer.from_pretrained(_ONNX_MODEL_DIR)
-        self._ort_model = ORTModelForSequenceClassification.from_pretrained(_ONNX_MODEL_DIR)
+        self._ort_session = ort.InferenceSession(
+            _ONNX_MODEL_PATH,
+            providers=["CPUExecutionProvider"],
+        )
         self._use_onnx = True
-        logger.info("Reranker loaded from ONNX: %s", _ONNX_MODEL_DIR)
+        logger.info("Reranker loaded from ONNX: %s", _ONNX_MODEL_PATH)
 
     def _load_pytorch(self) -> None:
         """Fallback: loads the original PyTorch CrossEncoder model."""
@@ -82,7 +86,7 @@ class CrossEncoderReranker:
 
     def _predict_onnx(self, query: str, candidates: list[dict[str, Any]]) -> list[float]:
         """Runs inference via ONNX Runtime."""
-        import torch
+        import numpy as np  # type: ignore
 
         pairs = [(query, candidate["text"]) for candidate in candidates]
         encoded = self._tokenizer(
@@ -90,15 +94,18 @@ class CrossEncoderReranker:
             padding=True,
             truncation=True,
             max_length=512,
-            return_tensors="pt",
+            return_tensors="np",
         )
-        with torch.no_grad():
-            outputs = self._ort_model(**encoded)
-        logits = outputs.logits.squeeze(-1)
-        if hasattr(logits, "tolist"):
-            values = logits.tolist()
-            return values if isinstance(values, list) else [float(values)]
-        return [float(logits)]
+        outputs = self._ort_session.run(
+            None,
+            {
+                "input_ids": encoded["input_ids"],
+                "attention_mask": encoded["attention_mask"],
+                "token_type_ids": encoded["token_type_ids"],
+            },
+        )
+        logits = np.squeeze(outputs[0], axis=-1)
+        return cast(list[float], logits.tolist())
 
     def _predict_pytorch(self, query: str, candidates: list[dict[str, Any]]) -> list[float]:
         """Runs inference via the PyTorch CrossEncoder fallback."""

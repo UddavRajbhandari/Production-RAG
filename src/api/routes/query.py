@@ -4,6 +4,7 @@ Query endpoint for RAG pipeline interactions.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -13,6 +14,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.api.models import QueryRequest, QueryResponse
+from src.evaluation.ragas_evaluator import evaluate as evaluate_ragas
+from src.reasoning.state import RAGState
 
 if TYPE_CHECKING:
     from src.reasoning.pipeline import ReasoningPipeline
@@ -49,10 +52,66 @@ def get_reasoning_pipeline() -> ReasoningPipeline:
     return _reasoning_pipeline
 
 
+def _build_pipeline_response(result: RAGState, start_time: float, include_sources: bool) -> dict:
+    """Build structured response from raw pipeline result.
+
+    Shared by /query and /query/stream endpoints so both return
+    identical sources, node_evaluations, and metadata.
+    """
+    latency_ms = (time.time() - start_time) * 1000
+
+    # Compute RAGAS metrics from pipeline output
+    ragas_scores = evaluate_ragas(dict(result))
+
+    sources: list[dict[str, Any]] | None = None
+    if include_sources and result.get("retrieved_context"):
+        sources = [
+            {
+                "text": ctx.get("text", "")[:500],
+                "score": round(ctx.get("rrf_score", 0), 4),
+                "source": ctx.get("source", "unknown"),
+            }
+            for ctx in result.get("retrieved_context", [])[:5]
+        ]
+
+    node_evaluations: list[dict] = []
+    node_latencies = result.get("node_latency_ms", {})
+    node_order = [
+        "planner",
+        "router",
+        "retrieval_agent",
+        "calculation_agent",
+        "summarization_agent",
+        "gatekeeper",
+        "auditor",
+        "strategist",
+    ]
+
+    for node_name in node_order:
+        latency = node_latencies.get(node_name, 0)
+        entry: dict = {"node": node_name, "latency_ms": latency}
+        if node_name in ("gatekeeper", "auditor", "strategist"):
+            validation_passed = result.get("validation_passed", True)
+            error_msg = (result.get("error_message") or "").lower()
+            entry["evaluation"] = "passed" if validation_passed or node_name not in error_msg else "failed"
+        else:
+            entry["evaluation"] = "completed"
+        node_evaluations.append(entry)
+
+    return {
+        "answer": result.get("generated_answer", ""),
+        "sources": sources,
+        "latency_ms": latency_ms,
+        "validation_passed": result.get("validation_passed", True),
+        "error_message": result.get("error_message"),
+        "node_evaluations": (node_evaluations if any(ne["latency_ms"] > 0 for ne in node_evaluations) else None),
+        "ragas_scores": ragas_scores,
+    }
+
+
 @router.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest) -> QueryResponse:
-    """
-    Submit a query to the RAG pipeline.
+    """Submit a query to the RAG pipeline.
 
     Processes the query through the LangGraph reasoning engine
     and returns the generated answer with sources.
@@ -60,44 +119,43 @@ async def query(request: QueryRequest) -> QueryResponse:
     start_time = time.time()
 
     try:
-        # Option 1: Use full reasoning pipeline (with validation nodes)
         pipeline = get_reasoning_pipeline()
         logger.info("Processing query: %s...", request.query[:100])
 
-        result = pipeline.run(request.query)
-
-        latency_ms = (time.time() - start_time) * 1000
-
-        # Extract sources from retrieved context if requested
-        sources: list[dict[str, Any]] | None = None
-        if request.include_sources and result.get("retrieved_context"):
-            sources = [
-                {
-                    "text": ctx.get("text", "")[:500],
-                    "score": round(ctx.get("rrf_score", 0), 4),
-                    "source": ctx.get("source", "unknown"),
-                }
-                for ctx in result.get("retrieved_context", [])[:5]
-            ]
+        result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
+        built = _build_pipeline_response(result, start_time, request.include_sources)
 
         return QueryResponse(
-            answer=result.get("generated_answer", ""),
-            sources=sources,
-            latency_ms=latency_ms,
-            validation_passed=result.get("validation_passed", True),
+            answer=built["answer"],
+            sources=built["sources"],
+            latency_ms=built["latency_ms"],
+            validation_passed=built["validation_passed"],
+            error_message=built["error_message"],
+            node_evaluations=built["node_evaluations"],
+            ragas_scores=built["ragas_scores"],
         )
 
     except Exception as e:
         logger.error("Query processing failed: %s", str(e))
+        error_str = str(e).lower()
+        if "all providers failed" in error_str or "no llm" in error_str:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "no_llm_available",
+                    "message": "No LLM available. Provide your OpenRouter API key in settings, or run Ollama locally.",
+                    "solution": "Add your OpenRouter key in Settings, or start Ollama with: ollama serve",
+                },
+            ) from e
         raise HTTPException(status_code=500, detail="Query processing failed") from e
 
 
 @router.post("/query/retrieve")
 async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
-    """
-    Retrieve documents without generating an answer.
+    """Retrieve documents without generating an answer.
 
     Useful for debugging retrieval quality or custom workflows.
+    Returns only matched sources with no LLM call.
     """
     try:
         retriever = get_hybrid_retriever()
@@ -105,17 +163,15 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
 
         results = retriever.search(request.query)
 
-        # Format sources
-        sources = []
-        for r in results:
-            sources.append(
-                {
-                    "text": r.get("text", "")[:500],
-                    "score": round(r.get("rrf_score", 0), 4),
-                    "source": r.get("source", "unknown"),
-                    "metadata": r.get("metadata", {}),
-                }
-            )
+        sources = [
+            {
+                "text": r.get("text", "")[:500],
+                "score": round(r.get("rrf_score", 0), 4),
+                "source": r.get("source", "unknown"),
+                "metadata": r.get("metadata", {}),
+            }
+            for r in results
+        ]
 
         return {
             "query": request.query,
@@ -130,17 +186,21 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
 
 @router.post("/query/stream")
 async def query_stream(request: QueryRequest) -> StreamingResponse:
-    """
-    Submit a query with streaming response.
+    """Submit a query with streaming response.
 
-    Uses Server-Sent Events (SSE) to stream the response
-    as it's generated (per streaming UX requirement).
+    Uses Server-Sent Events (SSE) to stream the answer text in
+    50-char chunks as it's generated. After the answer, sends a
+    JSON metadata event containing sources, node evaluations,
+    and validation results.
+
+    Event sequence:
+      data: <text_chunk>  (repeated)
+      data: <JSON metadata with sources, evaluations, etc.>
+      data: [DONE]
     """
     if not request.stream:
-        # If streaming not requested, use regular query endpoint
         result = await query(request)
 
-        # Manually convert to streaming for the response type
         async def convert_to_stream() -> AsyncGenerator[str, None]:
             yield f"data: {result.answer}\n\n"
             yield "data: [DONE]\n\n"
@@ -148,26 +208,32 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
         return StreamingResponse(convert_to_stream(), media_type="text/event-stream")
 
     async def generate_stream() -> AsyncGenerator[str, None]:
-        """Generate streaming response."""
         try:
+            start_time = time.time()
             pipeline = get_reasoning_pipeline()
             logger.info("Processing streaming query: %s...", request.query[:100])
 
-            # Run pipeline and stream result
-            result = pipeline.run(request.query)
-            answer = result.get("generated_answer", "")
+            result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
+            built = _build_pipeline_response(result, start_time, True)
+            answer = built.pop("answer", "")
 
-            # Stream in chunks (simulated - in production, stream token by token)
+            # Stream answer text in small chunks
             chunk_size = 50
             for i in range(0, len(answer), chunk_size):
-                chunk = answer[i : i + chunk_size]
-                yield f"data: {chunk}\n\n"
+                yield f"data: {answer[i : i + chunk_size]}\n\n"
 
+            # Send metadata as a single JSON event
+            yield f"data: {json.dumps(built)}\n\n"
             yield "data: [DONE]\n\n"
 
         except Exception as e:
             logger.error("Streaming query failed: %s", str(e))
-            yield f"data: Error: {str(e)}\n\n"
+            error_str = str(e).lower()
+            if "all providers failed" in error_str or "no llm" in error_str:
+                no_llm_msg = "No LLM available. Add your OpenRouter key in Settings, or run Ollama locally."
+                yield f'data: {{"error":"no_llm_available","message":"{no_llm_msg}"}}\n\n'
+            else:
+                yield f"data: Error: {str(e)}\n\n"
 
     return StreamingResponse(
         generate_stream(),

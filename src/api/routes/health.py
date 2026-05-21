@@ -28,9 +28,26 @@ def _get_storage_mode() -> dict:
     }
 
 
+def _get_llm_mode() -> str:
+    """Detect which LLM mode is active based on available keys."""
+    keys = {
+        "openrouter": os.getenv("OPENROUTER_API_KEY"),
+        "groq": os.getenv("GROQ_API_KEY"),
+        "openai": os.getenv("OPENAI_API_KEY"),
+        "hf": os.getenv("HF_TOKEN"),
+    }
+    available = [k for k, v in keys.items() if v]
+    if available:
+        return available[0]
+    return "none"
+
+
 def _check_qdrant() -> tuple[str, str]:
     """Check Qdrant connection."""
     try:
+        import logging
+
+        logging.getLogger("src.storage.qdrant_storage").setLevel(logging.WARNING)
         from src.storage.qdrant_storage import QdrantStorage
 
         client = QdrantStorage()
@@ -45,6 +62,10 @@ def _check_qdrant() -> tuple[str, str]:
 def _check_bm25() -> tuple[str, str]:
     """Check BM25 storage (local pickle or Qdrant native)."""
     try:
+        import logging
+
+        logging.getLogger("src.storage.qdrant_sparse_storage").setLevel(logging.WARNING)
+        logging.getLogger("src.storage.bm25_storage").setLevel(logging.WARNING)
         if os.getenv("QDRANT_URL"):
             from src.storage.qdrant_sparse_storage import QdrantSparseStorage
 
@@ -105,25 +126,25 @@ async def health_check() -> HealthResponse:
     """
     storage_mode = _get_storage_mode()
 
+    qdrant_status, qdrant_msg = _check_qdrant()
+    bm25_status, bm25_msg = _check_bm25()
+    postgres_status, postgres_msg = _check_postgres()
+    llm_status, llm_msg = _check_llm()
+
     components: dict[str, str] = {
         "api": "healthy",
+        "qdrant": qdrant_status,
+        "bm25": bm25_status,
+        "postgres": postgres_status,
+        "llm": llm_status,
         "storage_mode": f"{storage_mode['qdrant_mode']}/{storage_mode['postgres_mode']}",
-        "bm25": "",
     }
 
-    qdrant_status, qdrant_msg = _check_qdrant()
-    components["qdrant"] = qdrant_status
-
-    bm25_status, bm25_msg = _check_bm25()
-    components["bm25"] = bm25_status
-
-    postgres_status, postgres_msg = _check_postgres()
-    components["postgres"] = postgres_status
-
-    llm_status, llm_msg = _check_llm()
-    components["llm"] = llm_status
-
-    all_healthy = all(s in ("healthy", "degraded") for s in components.values())
+    health_components = {k: v for k, v in components.items() if k != "storage_mode"}
+    all_healthy = all(
+        v == "healthy" or v == "degraded" or v.startswith("healthy:") or v.startswith("degraded:")
+        for v in health_components.values()
+    )
 
     return HealthResponse(
         status="healthy" if all_healthy else "degraded",
@@ -134,6 +155,7 @@ async def health_check() -> HealthResponse:
             "bm25": f"{bm25_status}: {bm25_msg}",
             "postgres": f"{postgres_status}: {postgres_msg}",
             "llm": f"{llm_status}: {llm_msg}",
+            "llm_mode": _get_llm_mode(),
             "storage_mode": storage_mode,
         },
     )

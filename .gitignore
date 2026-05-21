@@ -90,3 +90,12 @@ gha-creds-*.json
 .mcp.json
 .gemini/
 AGENTS.md
+*node_modules/
+frontend/.next/
+frontend/node_modules/
+frontend/package-lock.json
+frontend/.eslintcache
+frontend/.turbo/
+docs/phase 8/Phase_8.3_Frontend.md
+*opencode.json
+storage/reranker_onnx/

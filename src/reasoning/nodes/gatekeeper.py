@@ -47,6 +47,7 @@ class GatekeeperNode:
                 prompt=prompt,
                 temperature=0.0,
                 default={"passed": False, "reason": "Parse failure"},
+                llm_api_key=state.get("llm_api_key"),
             )
             state["validation_passed"] = result.get("passed", False)
             if not state["validation_passed"]:

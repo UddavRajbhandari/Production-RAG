@@ -23,30 +23,31 @@ class AuditorNode:
         """Runs the hallucination check."""
         start_time = time.perf_counter()
 
-        context_text = "\n".join([c["text"] for c in state["retrieved_context"]])
+        context_text = "\n\n---\n\n".join([c["text"] for c in state["retrieved_context"]])
 
-        prompt = f"""
-AUDIT TASK: Hallucination Check.
-You are a skeptical auditor. Verify the ANSWER against the provided CONTEXT.
-
-CONTEXT:
-{context_text}
-
-ANSWER:
-{state["generated_answer"]}
-
-RULES:
-1. Is every claim in the ANSWER supported by the CONTEXT?
-2. If ANY info in answer missing from context, 'hallucination' is true.
-3. Output ONLY JSON with 'hallucination' (bool) and 'missing_claims' (list).
-
-JSON Output:
-"""
+        prompt = (
+            "AUDIT TASK: Hallucination Check.\n"
+            "You are a skeptical auditor. Verify the ANSWER against the provided CONTEXT.\n\n"
+            f"CONTEXT:\n{context_text}\n\n"
+            f"ANSWER:\n{state['generated_answer']}\n\n"
+            "RULES:\n"
+            "1. Does the ANSWER contradict the CONTEXT? (false info, made-up facts, wrong numbers)\n"
+            "2. Allow reasonable paraphrasing, summarization, and inferences drawn from the CONTEXT.\n"
+            "3. Allow domain-specific common knowledge. Standard practices, common techniques, and "
+            "typical tools in the relevant domain are reasonable inferences even if not "
+            "explicitly listed in the context.\n"
+            "4. Do NOT flag statements that acknowledge uncertainty ('likely', 'probably', 'may "
+            "have', 'is not explicitly stated but') — these are explicitly not hallucinations.\n"
+            "5. If the ANSWER is factually consistent with the CONTEXT, 'hallucination' is false.\n"
+            "6. Output ONLY JSON with 'hallucination' (bool) and 'missing_claims' (list).\n\n"
+            "JSON Output:"
+        )
         try:
             result = self.llm_client.generate_json(
                 prompt=prompt,
                 temperature=0.0,
                 default={"hallucination": False, "missing_claims": []},
+                llm_api_key=state.get("llm_api_key"),
             )
             if result.get("hallucination", False):
                 state["validation_passed"] = False

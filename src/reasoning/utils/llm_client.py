@@ -93,6 +93,8 @@ class LLMClient:
         self.circuit_breaker = CircuitBreaker()
         self._api_client: Any = None
         self.active_profile: str = "unknown"
+        self._ollama_cache: tuple[bool, float] | None = None
+        self._OLLAMA_CACHE_TTL = 30
 
         self._select_provider()
 
@@ -203,8 +205,44 @@ class LLMClient:
         format_json: bool = False,
         temperature: float = 0.0,
         custom_model: str | None = None,
+        llm_api_key: str | None = None,
     ) -> LLMResponse:
         """Generates a response with automatic fallback between providers."""
+        # User-provided key takes priority — use it directly
+        if llm_api_key:
+            try:
+                result = self._api_client.generate(
+                    prompt,
+                    format_json,
+                    temperature,
+                    custom_model,
+                    api_key_override=llm_api_key,
+                )
+                if result["success"]:
+                    return LLMResponse(
+                        text=result["text"],
+                        raw_response=result["raw_response"],
+                        latency_ms=result["latency_ms"],
+                        success=True,
+                        error=None,
+                    )
+                return LLMResponse(
+                    text="",
+                    raw_response={},
+                    latency_ms=result.get("latency_ms", 0.0),
+                    success=False,
+                    error=result.get("error", "Generation failed"),
+                )
+            except Exception as e:
+                logger.error("User-provided LLM key failed: %s", str(e))
+                return LLMResponse(
+                    text="",
+                    raw_response={},
+                    latency_ms=0.0,
+                    success=False,
+                    error=str(e),
+                )
+
         # Verify API key is still valid before trying API provider
         profiles = cast(dict[str, Any], self.config.get("llm.profiles", {}))
         active_profile = profiles.get(self.active_profile)
@@ -257,12 +295,24 @@ class LLMClient:
                         logger.warning(f"Fallback {profile_name} exception: {str(e)}")
 
         # Fallback to Ollama
-        if hasattr(self, "_ollama_url") and self._ollama_url:
+        if self._ollama_available():
             logger.info("Using Ollama fallback")
             return self._generate_ollama(prompt, format_json, temperature, custom_model)
 
         # No providers available
         return LLMResponse("", {}, 0.0, False, "All providers failed")
+
+    def _ollama_available(self) -> bool:
+        """Check if Ollama is available, with 30-second caching."""
+        now = time.time()
+        if self._ollama_cache:
+            available, ts = self._ollama_cache
+            if now - ts < self._OLLAMA_CACHE_TTL:
+                return available
+        # Cache miss or expired — re-check
+        available = hasattr(self, "_ollama_url") and bool(self._ollama_url)
+        self._ollama_cache = (available, now)
+        return available
 
     def _generate_ollama(
         self,
@@ -307,9 +357,10 @@ class LLMClient:
         prompt: str,
         temperature: float = 0.0,
         default: dict[str, Any] | None = None,
+        llm_api_key: str | None = None,
     ) -> dict[str, Any]:
         """Generate and parse JSON response."""
-        response = self.generate(prompt, format_json=True, temperature=temperature)
+        response = self.generate(prompt, format_json=True, temperature=temperature, llm_api_key=llm_api_key)
         if not response.success:
             return default or {}
         return safe_json_parse(response.text, default)
