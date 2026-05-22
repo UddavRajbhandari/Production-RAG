@@ -86,7 +86,7 @@ class CrossEncoderReranker:
 
     def _predict_onnx(self, query: str, candidates: list[dict[str, Any]]) -> list[float]:
         """Runs inference via ONNX Runtime."""
-        import numpy as np  # type: ignore
+        import numpy as np
 
         pairs = [(query, candidate["text"]) for candidate in candidates]
         encoded = self._tokenizer(

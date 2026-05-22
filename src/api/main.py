@@ -15,14 +15,18 @@ from dotenv import load_dotenv
 
 load_dotenv()  # noqa: E402 - Must load .env before storage modules check os.getenv
 
+import sentry_sdk  # noqa: E402
 from fastapi import Depends, FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: E402
+from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration  # noqa: E402
 from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 from src.api.middleware.auth import verify_api_key  # noqa: E402
 from src.api.middleware.logging import LoggingMiddleware  # noqa: E402
+from src.api.middleware.metrics import MetricsMiddleware  # noqa: E402
 from src.api.middleware.rate_limit import get_rate_limit_key  # noqa: E402
 from src.api.models import Settings  # noqa: E402
 from src.api.routes import health, ingest, metadata, query  # noqa: E402
@@ -33,6 +37,20 @@ if TYPE_CHECKING:
     from src.retrieval.hybrid_search import HybridRetriever
 
 settings = Settings()
+
+# Initialize Sentry for error tracking (graceful no-op if DSN unset)
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[
+            FastApiIntegration(),
+            SentryLoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+        ],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
+    logging.getLogger(__name__).info("Sentry initialized")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -129,6 +147,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["X-API-Key", "Content-Type", "X-Request-ID"],
 )
+
+app.add_middleware(MetricsMiddleware)
 
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(

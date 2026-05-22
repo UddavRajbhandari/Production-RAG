@@ -1,3 +1,19 @@
+monitoring:
+  metrics:
+    enabled: true
+    prometheus_buckets:
+      - 0.1
+      - 0.5
+      - 1.0
+      - 5.0
+      - 30.0
+      - 60.0
+      - 120.0
+      - 180.0
+  sentry:
+    traces_sample_rate: 0.1
+    send_default_pii: false
+
 evaluation:
   ground_truth:
     golden_set_ci: data/ground_truth/golden_set_ci.json

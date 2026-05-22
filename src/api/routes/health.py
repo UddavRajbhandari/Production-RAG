@@ -8,7 +8,10 @@ import logging
 import os
 
 from fastapi import APIRouter
+from starlette.requests import Request
+from starlette.responses import Response
 
+from src.api.middleware.metrics import metrics_endpoint
 from src.api.models import HealthResponse
 
 logger = logging.getLogger(__name__)
@@ -197,3 +200,9 @@ async def liveness_check() -> HealthResponse:
         version="1.0.0",
         components={"api": "alive"},
     )
+
+
+@router.get("/metrics")
+async def prometheus_metrics(request: Request) -> Response:
+    """Prometheus metrics endpoint for monitoring systems."""
+    return await metrics_endpoint(request)
