@@ -19,59 +19,119 @@ interface ChatPanelProps {
 
 type QueryMode = 'ask' | 'retrieve';
 
-function renderMarkdown(text: string): React.ReactNode {
-  let content = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  const segments = content.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
-  if (segments.length === 1) {
-    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
-    const numbered = lines.filter(l => /^\d+[.)]\s/.test(l));
-    if (numbered.length >= 2) {
-      return (
-        <ol className="list-decimal pl-5 space-y-2">
-          {numbered.map((line, i) => (
-            <li key={i} dangerouslySetInnerHTML={{ __html: line.replace(/^\d+[.)]\s+/, '') }} />
-          ))}
-        </ol>
-      );
+function parseInline(text: string): React.ReactNode[] {
+  const regex = /(\*\*(.+?)\*\*|`([^`]+)`)/g;
+  const segments: { type: 'text' | 'bold' | 'code'; content: string }[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const regexGlobal = new RegExp(regex.source, 'g');
+  while ((match = regexGlobal.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
     }
-    const bullets = lines.filter(l => /^[-*+]\s/.test(l));
-    if (bullets.length >= 2) {
-      return (
-        <ul className="list-disc pl-5 space-y-2">
-          {bullets.map((line, i) => (
-            <li key={i} dangerouslySetInnerHTML={{ __html: line.replace(/^[-*+]\s+/, '') }} />
-          ))}
-        </ul>
-      );
+    if (match[2] !== undefined) {
+      segments.push({ type: 'bold', content: match[2] });
+    } else if (match[3] !== undefined) {
+      segments.push({ type: 'code', content: match[3] });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+
+  const nodes: React.ReactNode[] = [];
+  for (const seg of segments) {
+    if (seg.type === 'text') {
+      const italicParts = seg.content.split(/(\*([^*]+)\*)/g);
+      for (let i = 0; i < italicParts.length; i++) {
+        const part = italicParts[i];
+        if (!part) continue;
+        if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+          nodes.push(<em key={nodes.length}>{part.slice(1, -1)}</em>);
+        } else {
+          nodes.push(part);
+        }
+      }
+    } else if (seg.type === 'bold') {
+      nodes.push(<strong key={nodes.length}>{parseInline(seg.content)}</strong>);
+    } else {
+      nodes.push(<code key={nodes.length} className="rounded bg-background-muted px-1 py-0.5 text-xs font-mono">{seg.content}</code>);
     }
   }
+  return nodes;
+}
+
+function renderBlock(block: string, key: number): React.ReactNode {
+  const codeBlockMatch = block.match(/^```(\w*)\n([\s\S]*?)```$/);
+  if (codeBlockMatch) {
+    return (
+      <pre key={key} className="rounded border border-border-subtle bg-background-muted p-3 overflow-x-auto text-xs font-mono">
+        <code>{codeBlockMatch[2].trim()}</code>
+      </pre>
+    );
+  }
+
+  const headingMatch = block.match(/^(#{1,3})\s+(.+)$/m);
+  if (headingMatch) {
+    const level = headingMatch[1].length;
+    const Tag = level === 1 ? 'h1' : level === 2 ? 'h2' : 'h3';
+    const className = level === 1
+      ? 'text-lg font-bold text-text-primary'
+      : level === 2
+      ? 'text-base font-semibold text-text-primary'
+      : 'text-sm font-semibold text-text-primary';
+    return <Tag key={key} className={className}>{parseInline(headingMatch[2])}</Tag>;
+  }
+
+  const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+
+  const allNumbered = lines.every(l => /^\d+[.)]\s/.test(l));
+  if (allNumbered) {
+    return (
+      <ol key={key} className="list-decimal pl-5 space-y-1">
+        {lines.map((line, i) => (
+          <li key={i}>{parseInline(line.replace(/^\d+[.)]\s+/, ''))}</li>
+        ))}
+      </ol>
+    );
+  }
+
+  const allBullets = lines.every(l => /^[-*+]\s/.test(l));
+  if (allBullets) {
+    return (
+      <ul key={key} className="list-disc pl-5 space-y-1">
+        {lines.map((line, i) => (
+          <li key={i}>{parseInline(line.replace(/^[-*+]\s+/, ''))}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div key={key} className="space-y-1">
+      {lines.map((line, i) => {
+        const bulletItem = line.match(/^[-*+]\s+(.+)/);
+        if (bulletItem) {
+          return <li key={i} className="ml-5 list-disc">{parseInline(bulletItem[1])}</li>;
+        }
+        const numberedItem = line.match(/^(\d+)[.)]\s+(.+)/);
+        if (numberedItem) {
+          return <li key={i} className="ml-5 list-decimal">{parseInline(numberedItem[2])}</li>;
+        }
+        return <p key={i} className="whitespace-pre-wrap">{parseInline(line)}</p>;
+      })}
+    </div>
+  );
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  const blocks = text.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+  if (blocks.length === 0) return null;
   return (
     <div className="space-y-3">
-      {segments.map((seg, i) => {
-        const lines = seg.split('\n').map(l => l.trim()).filter(Boolean);
-        const numbered = lines.filter(l => /^\d+[.)]\s/.test(l));
-        if (numbered.length >= 2) {
-          return (
-            <ol key={i} className="list-decimal pl-5 space-y-2">
-              {numbered.map((line, j) => (
-                <li key={j} dangerouslySetInnerHTML={{ __html: line.replace(/^\d+[.)]\s+/, '') }} />
-              ))}
-            </ol>
-          );
-        }
-        const bullets = lines.filter(l => /^[-*+]\s/.test(l));
-        if (bullets.length >= 2) {
-          return (
-            <ul key={i} className="list-disc pl-5 space-y-2">
-              {bullets.map((line, j) => (
-                <li key={j} dangerouslySetInnerHTML={{ __html: line.replace(/^[-*+]\s+/, '') }} />
-              ))}
-            </ul>
-          );
-        }
-        const bolded = lines.join('<br/>');
-        return <p key={i} className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: bolded }} />;
-      })}
+      {blocks.map((block, i) => renderBlock(block, i))}
     </div>
   );
 }

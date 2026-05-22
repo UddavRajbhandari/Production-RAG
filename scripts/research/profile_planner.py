@@ -34,6 +34,7 @@ def profile_planner() -> None:
             "error_message": None,
             "node_latency_ms": {},
             "total_latency_ms": 0.0,
+            "llm_api_key": None,
         }
 
         result_state = planner.process(state)

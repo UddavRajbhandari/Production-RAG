@@ -174,9 +174,36 @@ class QdrantStorage:
             )
         else:
             logger.info(
-                "Collection '%s' already exists — skipping creation.",
+                "Collection '%s' already exists — ensuring payload indexes.",
                 self.collection_name,
             )
+
+        # Ensure payload indexes exist (handles both new and pre-existing collections)
+        self._ensure_payload_indexes()
+
+    def _ensure_payload_indexes(self) -> None:
+        """Create payload indexes for filterable fields used during search.
+
+        Idempotent — Qdrant ignores re-creation of existing indexes.
+        Without these indexes, filtered searches (e.g., by year/date) will
+        fail with 'Index required but not found' errors.
+        """
+        index_fields = [
+            ("date", models.PayloadSchemaType.KEYWORD),
+            ("department", models.PayloadSchemaType.KEYWORD),
+            ("source_file", models.PayloadSchemaType.KEYWORD),
+        ]
+        for field_name, field_type in index_fields:
+            try:
+                self.client.create_payload_index(
+                    collection_name=self.collection_name,
+                    field_name=field_name,
+                    field_schema=field_type,
+                    wait=False,
+                )
+                logger.debug("Payload index created on '%s' (%s).", field_name, field_type)
+            except Exception:
+                logger.debug("Payload index on '%s' already exists — skipping.", field_name)
 
     def insert_nodes(
         self,

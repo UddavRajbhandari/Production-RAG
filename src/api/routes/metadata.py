@@ -6,7 +6,7 @@ Provides filtering and search by metadata fields.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import APIRouter, HTTPException
 
@@ -85,13 +85,13 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
         for r in results:
             chunks.append(
                 MetadataChunkResponse(
-                    id=r.id,
-                    text=r.text[:200],  # Truncate for response
-                    source_file=r.source_file,
-                    department=r.department,
-                    year=r.date,
-                    section_heading=r.section_heading,
-                    domain_tag=r.domain_tag,
+                    id=cast(str, r.id),
+                    text=cast(str, r.text)[:200],  # Truncate for response
+                    source_file=cast(str, r.source_file),
+                    department=cast(str, r.department),
+                    year=cast(str, r.date),
+                    section_heading=cast(str, r.section_heading),
+                    domain_tag=cast(str, r.domain_tag),
                 )
             )
 
@@ -100,7 +100,7 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
         logger.info("Metadata query returned %d results", len(chunks))
 
         return MetadataQueryResponse(
-            total=total,
+            total=total if total is not None else 0,
             offset=request.offset or 0,
             limit=request.limit or 50,
             chunks=chunks,

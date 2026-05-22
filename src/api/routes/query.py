@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
+from src.api.middleware.metrics import update_ragas_metrics
 from src.api.models import QueryRequest, QueryResponse
 from src.evaluation.ragas_evaluator import evaluate as evaluate_ragas
 from src.reasoning.state import RAGState
@@ -62,6 +63,8 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
 
     # Compute RAGAS metrics from pipeline output
     ragas_scores = evaluate_ragas(dict(result))
+    if ragas_scores:
+        update_ragas_metrics(ragas_scores)
 
     sources: list[dict[str, Any]] | None = None
     if include_sources and result.get("retrieved_context"):
@@ -217,10 +220,21 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
             built = _build_pipeline_response(result, start_time, True)
             answer = built.pop("answer", "")
 
-            # Stream answer text in small chunks
+            # Stream answer text in word-boundary-aware chunks
+            # Avoids splitting mid-word, preventing word fusion on the frontend
             chunk_size = 50
-            for i in range(0, len(answer), chunk_size):
-                yield f"data: {answer[i : i + chunk_size]}\n\n"
+            start = 0
+            while start < len(answer):
+                if start + chunk_size >= len(answer):
+                    yield f"data: {answer[start:]}\n\n"
+                    break
+                end = start + chunk_size
+                if end < len(answer) and not answer[end].isspace() and end > start:
+                    last_space = answer.rfind(" ", start, end)
+                    if last_space > start:
+                        end = last_space + 1
+                yield f"data: {answer[start:end]}\n\n"
+                start = end
 
             # Send metadata as a single JSON event
             yield f"data: {json.dumps(built)}\n\n"

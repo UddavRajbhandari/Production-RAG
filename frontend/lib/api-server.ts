@@ -81,8 +81,8 @@ export async function queryStream(
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6).trim();
-        if (!data || data === '[DONE]') return;
+        const data = line.slice(6);
+        if (!data.trim() || data.trim() === '[DONE]') return;
 
         if (data.startsWith('{')) {
           try {

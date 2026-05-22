@@ -1,0 +1,52 @@
+[
+  {
+    "question_id": "gt_001",
+    "question": "What period does the fiscal year 2023 (FY23) cover in the World Bank Access to Information report?",
+    "ground_truth_answer": "Fiscal year 2023 (FY23) covers July 1, 2022 to June 30, 2023.",
+    "ground_truth_chunk_ids": {
+      "structure_aware": ["sa_1cff30362151"]
+    },
+    "source_document": "Access-to-Information-2023-annual-report.pdf",
+    "domain_tag": "financial"
+  },
+  {
+    "question_id": "gt_003",
+    "question": "Which retrieval strategy achieved the best composite score in the benchmarking study for biomedical RAG?",
+    "ground_truth_answer": "Cross-Encoder Reranking achieved the best composite score of 0.827.",
+    "ground_truth_chunk_ids": {
+      "structure_aware": ["sa_cf9f29dbf4d4"]
+    },
+    "source_document": "2605.02520v1.pdf",
+    "domain_tag": "academic"
+  },
+  {
+    "question_id": "gt_005",
+    "question": "Who is listed as the primary author of the Python 3.7.0 Tutorial released on September 02, 2018?",
+    "ground_truth_answer": "Guido van Rossum is listed as the primary author.",
+    "ground_truth_chunk_ids": {
+      "structure_aware": ["sa_c4e8461ab31a"]
+    },
+    "source_document": "Python-tutorial-pdf1.pdf",
+    "domain_tag": "technical"
+  },
+  {
+    "question_id": "gt_007",
+    "question": "What is a key difference in how Contract Diff contracts handle adjustments compared to how Traditional contracts handle them?",
+    "ground_truth_answer": "Contract Diff contracts use structured adjustment schedules whereas Traditional contracts use manual amendments.",
+    "ground_truth_chunk_ids": {
+      "structure_aware": ["sa_6a0dad38294a"]
+    },
+    "source_document": "chiplingo-contract-diff-vs-traditional.pdf",
+    "domain_tag": "general"
+  },
+  {
+    "question_id": "gt_010",
+    "question": "What is the IMF's projected GDP growth rate for advanced economies in 2025 according to the World Economic Outlook 2024?",
+    "ground_truth_answer": "The IMF's World Economic Outlook 2024 projects GDP growth of 1.8% for advanced economies in 2025.",
+    "ground_truth_chunk_ids": {
+      "structure_aware": ["sa_52b74337df18"]
+    },
+    "source_document": "WEO2024.pdf",
+    "domain_tag": "financial"
+  }
+]
