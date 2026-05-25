@@ -99,3 +99,5 @@ frontend/.turbo/
 docs/phase 8/Phase_8.3_Frontend.md
 *opencode.json
 storage/reranker_onnx/
+.opencode/
+graphify-out/

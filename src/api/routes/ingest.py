@@ -12,11 +12,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile
-from sentence_transformers import SentenceTransformer
 
 from src.api.models import IngestRequest, IngestResponse
 
 if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
     from src.ingestion.pipeline import IngestionPipeline
 
 logger = logging.getLogger(__name__)
