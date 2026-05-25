@@ -8,20 +8,23 @@ Supports dual BM25 modes:
 - Local mode: Uses local pickle BM25 (development/fallback)
 """
 
+from __future__ import annotations
+
 import concurrent.futures
 import logging
 import os
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
-from llama_index.core.schema import TextNode
-from qdrant_client.http import models
-from sentence_transformers import SentenceTransformer
 
 from src.storage.bm25_storage import BM25Storage
 from src.storage.qdrant_sparse_storage import QdrantSparseStorage
 from src.storage.qdrant_storage import QdrantStorage
+
+if TYPE_CHECKING:
+    from llama_index.core.schema import TextNode
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,8 @@ class HybridRetriever:
             self.bm25 = BM25Storage()
             self.bm25.load()
             logger.info("HybridRetriever: Using local BM25 pickle (local mode)")
+
+        from sentence_transformers import SentenceTransformer  # noqa: PLC0415
 
         self.embed_model = SentenceTransformer(self.config["models"]["embedding"])
 
@@ -193,6 +198,8 @@ class HybridRetriever:
         query_filter = None
         if year_filter and self.use_cloud_bm25:
             try:
+                from qdrant_client.http import models  # noqa: PLC0415
+
                 query_filter = models.Filter(
                     must=[models.FieldCondition(key="date", match=models.MatchValue(value=year_filter))]
                 )

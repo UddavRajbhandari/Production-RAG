@@ -81,8 +81,6 @@ jobs:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      QDRANT_URL: ${{ secrets.QDRANT_URL }}
-      QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
