@@ -28,5 +28,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application — bind to $PORT (Render env var) or default 8000
+CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
