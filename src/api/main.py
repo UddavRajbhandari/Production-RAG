@@ -29,7 +29,6 @@ from src.api.middleware.logging import LoggingMiddleware  # noqa: E402
 from src.api.middleware.metrics import MetricsMiddleware  # noqa: E402
 from src.api.middleware.rate_limit import get_rate_limit_key  # noqa: E402
 from src.api.models import Settings  # noqa: E402
-from src.api.routes import health, ingest, metadata, query  # noqa: E402
 
 if TYPE_CHECKING:
     from src.ingestion.pipeline import IngestionPipeline
@@ -106,11 +105,40 @@ def get_ingestion_pipeline() -> IngestionPipeline:
     return _ingestion_pipeline
 
 
+def _register_routes(app: FastAPI) -> None:
+    """Register API routes (lazy-imported to minimize startup time)."""
+    t0 = __import__("time").time()
+    from src.api.routes import health, ingest, metadata, query  # noqa: F811
+
+    app.include_router(health.router, prefix="/api/v1", tags=["health"])
+    app.include_router(
+        query.router,
+        prefix="/api/v1",
+        tags=["query"],
+        dependencies=[Depends(verify_api_key)],
+    )
+    app.include_router(
+        ingest.router,
+        prefix="/api/v1",
+        tags=["ingest"],
+        dependencies=[Depends(verify_api_key)],
+    )
+    app.include_router(
+        metadata.router,
+        prefix="/api/v1",
+        tags=["metadata"],
+        dependencies=[Depends(verify_api_key)],
+    )
+    logger.info("Routes registered in %.2fs", __import__("time").time() - t0)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     global _storage_initialized
     logger.info("Starting Production RAG API...")
+
+    _register_routes(app)
 
     try:
         app.state.hybrid_retriever = None
@@ -149,25 +177,11 @@ app.add_middleware(
 
 app.add_middleware(MetricsMiddleware)
 
-app.include_router(health.router, prefix="/api/v1", tags=["health"])
-app.include_router(
-    query.router,
-    prefix="/api/v1",
-    tags=["query"],
-    dependencies=[Depends(verify_api_key)],
-)
-app.include_router(
-    ingest.router,
-    prefix="/api/v1",
-    tags=["ingest"],
-    dependencies=[Depends(verify_api_key)],
-)
-app.include_router(
-    metadata.router,
-    prefix="/api/v1",
-    tags=["metadata"],
-    dependencies=[Depends(verify_api_key)],
-)
+
+@app.get("/health/live")
+async def liveness_check() -> dict[str, str]:
+    """Minimal liveness endpoint — no dependencies, always responds."""
+    return {"status": "alive"}
 
 
 @app.get("/")

@@ -1,0 +1,44 @@
+# Docker Ignore File
+# Exclude files from Docker build context to speed up builds and reduce image size
+
+# Git
+.git
+.github
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Project Specific
+data/
+storage/
+docs/
+scripts/
+tests/
+*.json
+*.md
+!requirements.txt
+!pyproject.toml
+
+# OS
+.DS_Store
+Thumbs.db
