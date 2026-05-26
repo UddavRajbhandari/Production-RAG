@@ -10,7 +10,7 @@ import os
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 _LOAD_T0 = time.time()
 
@@ -38,19 +38,14 @@ logging.basicConfig(
 )
 _log_load("logging.basicConfig done")
 
-
-_log_load("sentry_sdk imported")
-
 from fastapi import Depends, FastAPI  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 _log_load("fastapi imported")
 
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 _log_load("cors imported")
-
-
-_log_load("sentry integrations imported")
 
 from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
@@ -157,32 +152,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _storage_initialized
     _log_load("Lifespan started")
 
-    # Initialize Sentry for error tracking (graceful no-op if DSN unset)
-    # DISABLED: Appears to be blocking startup on Render's hardware/environment
-    """
-    sentry_dsn = os.getenv("SENTRY_DSN")
-    if sentry_dsn:
-        _log_load("Sentry DSN found, initializing...")
-        try:
-            import sentry_sdk
-            from sentry_sdk.integrations.fastapi import FastApiIntegration
-            from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration
-
-            sentry_sdk.init(
-                dsn=sentry_dsn,
-                integrations=[
-                    FastApiIntegration(),
-                    SentryLoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
-                ],
-                traces_sample_rate=0.1,
-                send_default_pii=False,
-            )
-            _log_load("Sentry initialized")
-            print("[main.py lifespan] Sentry initialized", flush=True)
-        except Exception as e:
-            _log_load(f"Sentry initialization failed: {e}")
-    """
-    _log_load("Sentry initialization skipped (disabled)")
+    # Sentry disabled — import was blocking on Render's infrastructure.
+    # To re-enable: uncomment below and set SENTRY_DSN env var.
+    # sentry_dsn = os.getenv("SENTRY_DSN")
+    # if sentry_dsn:
+    #     try:
+    #         import sentry_sdk
+    #         from sentry_sdk.integrations.fastapi import FastApiIntegration
+    #         from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration
+    #         sentry_sdk.init(dsn=sentry_dsn, integrations=[FastApiIntegration(), SentryLoggingIntegration()])
+    #     except Exception:
+    #         pass
+    _log_load("Sentry disabled")
 
     try:
         app.state.hybrid_retriever = None
@@ -215,7 +196,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(LoggingMiddleware)
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -235,15 +216,14 @@ async def liveness_check() -> dict[str, str]:
     return {"status": "alive"}
 
 
-@app.get("/")
-async def root() -> dict[str, Any]:
-    """Root endpoint with API information."""
-    return {
-        "name": "Production RAG Pipeline API",
-        "version": "1.0.0",
-        "status": "operational",
-        "docs": "/docs",
-    }
+# Serve the built frontend as static files (SPA fallback)
+_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "out")
+_frontend_dir = os.path.normpath(_frontend_dir)
+if os.path.isdir(_frontend_dir):
+    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
+    _log_load("frontend static files mounted")
+else:
+    _log_load("no frontend build found at " + _frontend_dir)
 
 
 _log_load("routes defined — module load complete")
