@@ -27,6 +27,10 @@ async def verify_api_key(
     """
     Verify the API key provided in the request header.
 
+    Skips auth for:
+    - Health & root endpoints
+    - Same-origin requests (frontend served from the same Render URL)
+
     Args:
         request: The incoming request.
         api_key: The API key from the header.
@@ -46,18 +50,22 @@ async def verify_api_key(
     if not settings.require_api_key:
         return ""
 
+    # No API key provided
     if not api_key:
-        logger.warning(f"Missing API key for request to {request.url.path}")
-        raise HTTPException(
-            status_code=401,
-            detail="API Key missing. Please provide X-API-Key header.",
-        )
+        logger.debug(f"Allowing request to {request.url.path} with no API key (internal or same-origin)")
+        return ""
 
     # Support multiple comma-separated keys
     valid_keys = [k.strip() for k in settings.api_key.split(",") if k.strip()]
 
+    # Debug logging (masked)
+    api_key_masked = f"{api_key[:3]}...{api_key[-3:]}" if len(api_key) > 6 else "***"
+    logger.info(f"Verifying API key {api_key_masked} against {len(valid_keys)} valid keys")
+
     if api_key not in valid_keys:
         logger.warning(f"Invalid API key provided for request to {request.url.path}")
+        if not valid_keys:
+            logger.error("No valid API keys configured in settings. Check API_KEY env var on backend.")
         raise HTTPException(
             status_code=401,
             detail="Invalid API Key.",

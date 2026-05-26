@@ -6,6 +6,7 @@ Reports storage mode (cloud vs local) and component health.
 
 import logging
 import os
+from typing import Any
 
 from fastapi import APIRouter
 from starlette.requests import Request
@@ -119,6 +120,20 @@ def _check_llm() -> tuple[str, str]:
         return "unhealthy", str(e)
 
 
+def _check_auth() -> dict[str, Any]:
+    """Check authentication configuration."""
+    from src.api.models.models import settings
+
+    has_key = bool(settings.api_key)
+    key_count = len([k for k in settings.api_key.split(",") if k.strip()])
+
+    return {
+        "require_api_key": settings.require_api_key,
+        "api_key_configured": has_key,
+        "api_key_count": key_count,
+    }
+
+
 @router.get("/health", response_model=HealthResponse)
 async def health_check() -> HealthResponse:
     """
@@ -133,19 +148,22 @@ async def health_check() -> HealthResponse:
     bm25_status, bm25_msg = _check_bm25()
     postgres_status, postgres_msg = _check_postgres()
     llm_status, llm_msg = _check_llm()
+    auth_info = _check_auth()
 
-    components: dict[str, str] = {
+    components: dict[str, str | dict] = {
         "api": "healthy",
         "qdrant": qdrant_status,
         "bm25": bm25_status,
         "postgres": postgres_status,
         "llm": llm_status,
+        "auth": auth_info,
         "storage_mode": f"{storage_mode['qdrant_mode']}/{storage_mode['postgres_mode']}",
     }
 
     health_components = {k: v for k, v in components.items() if k != "storage_mode"}
     all_healthy = all(
-        v == "healthy" or v == "degraded" or v.startswith("healthy:") or v.startswith("degraded:")
+        isinstance(v, str)
+        and (v == "healthy" or v == "degraded" or v.startswith("healthy:") or v.startswith("degraded:"))
         for v in health_components.values()
     )
 
