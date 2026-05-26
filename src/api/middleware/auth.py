@@ -37,7 +37,7 @@ async def verify_api_key(
     Raises:
         HTTPException: If the API key is missing or invalid.
     """
-    from src.api.main import settings
+    from src.api.models.models import settings
 
     # Skip auth for health and root endpoints
     if request.url.path.startswith("/api/v1/health") or request.url.path == "/":

@@ -30,7 +30,14 @@ load_dotenv()  # noqa: E402 - Must load .env before storage modules check os.get
 
 _log_load("load_dotenv done")
 
-import sentry_sdk  # noqa: E402
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[logging.StreamHandler()],
+)
+_log_load("logging.basicConfig done")
+
 
 _log_load("sentry_sdk imported")
 
@@ -42,8 +49,6 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 _log_load("cors imported")
 
-from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: E402
-from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration  # noqa: E402
 
 _log_load("sentry integrations imported")
 
@@ -57,7 +62,7 @@ from src.api.middleware.auth import verify_api_key  # noqa: E402
 from src.api.middleware.logging import LoggingMiddleware  # noqa: E402
 from src.api.middleware.metrics import MetricsMiddleware  # noqa: E402
 from src.api.middleware.rate_limit import get_rate_limit_key  # noqa: E402
-from src.api.models import Settings  # noqa: E402
+from src.api.models.models import settings  # noqa: E402
 
 _log_load("local middleware + models imported")
 
@@ -66,32 +71,7 @@ if TYPE_CHECKING:
     from src.reasoning.pipeline import ReasoningPipeline
     from src.retrieval.hybrid_search import HybridRetriever
 
-settings = Settings()
-
-_log_load("Settings() done")
-
-# Initialize Sentry for error tracking (graceful no-op if DSN unset)
-sentry_dsn = os.getenv("SENTRY_DSN")
-if sentry_dsn:
-    print("[main.py load] sentry_dsn found, initializing...", flush=True)
-    sentry_sdk.init(
-        dsn=sentry_dsn,
-        integrations=[
-            FastApiIntegration(),
-            SentryLoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
-        ],
-        traces_sample_rate=0.1,
-        send_default_pii=False,
-    )
-    logging.getLogger(__name__).info("Sentry initialized")
-    _log_load("sentry_sdk.init() done")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[logging.StreamHandler()],
-)
-_log_load("logging.basicConfig done")
+_log_load("Settings() already done in models")
 
 logging.getLogger("src.api.middleware").setLevel(logging.INFO)
 logging.getLogger("slowapi").setLevel(logging.WARNING)
@@ -177,6 +157,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     global _storage_initialized
     logger.info("Starting Production RAG API...")
+
+    # Initialize Sentry for error tracking (graceful no-op if DSN unset)
+    # Done in lifespan to avoid blocking module import
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        logger.info("Sentry DSN found, initializing in lifespan...")
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.fastapi import FastApiIntegration
+            from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration
+
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[
+                    FastApiIntegration(),
+                    SentryLoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+                ],
+                traces_sample_rate=0.1,
+                send_default_pii=False,
+            )
+            logger.info("Sentry initialized")
+        except Exception as e:
+            logger.warning("Sentry initialization failed: %s", str(e))
 
     _register_routes(app)
 
