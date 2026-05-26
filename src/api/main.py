@@ -7,28 +7,59 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from dotenv import load_dotenv
+_LOAD_T0 = time.time()
+
+
+def _log_load(step: str) -> None:
+    print(f"[main.py load] {time.time() - _LOAD_T0:.2f}s - {step}", flush=True)
+
+
+_log_load("start")
+
+
+from dotenv import load_dotenv  # noqa: E402
+
+_log_load("dotenv imported")
 
 load_dotenv()  # noqa: E402 - Must load .env before storage modules check os.getenv
 
+_log_load("load_dotenv done")
+
 import sentry_sdk  # noqa: E402
+
+_log_load("sentry_sdk imported")
+
 from fastapi import Depends, FastAPI  # noqa: E402
+
+_log_load("fastapi imported")
+
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+_log_load("cors imported")
+
 from sentry_sdk.integrations.fastapi import FastApiIntegration  # noqa: E402
 from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration  # noqa: E402
+
+_log_load("sentry integrations imported")
+
 from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
+
+_log_load("slowapi imported")
 
 from src.api.middleware.auth import verify_api_key  # noqa: E402
 from src.api.middleware.logging import LoggingMiddleware  # noqa: E402
 from src.api.middleware.metrics import MetricsMiddleware  # noqa: E402
 from src.api.middleware.rate_limit import get_rate_limit_key  # noqa: E402
 from src.api.models import Settings  # noqa: E402
+
+_log_load("local middleware + models imported")
 
 if TYPE_CHECKING:
     from src.ingestion.pipeline import IngestionPipeline
@@ -37,9 +68,12 @@ if TYPE_CHECKING:
 
 settings = Settings()
 
+_log_load("Settings() done")
+
 # Initialize Sentry for error tracking (graceful no-op if DSN unset)
 sentry_dsn = os.getenv("SENTRY_DSN")
 if sentry_dsn:
+    print("[main.py load] sentry_dsn found, initializing...", flush=True)
     sentry_sdk.init(
         dsn=sentry_dsn,
         integrations=[
@@ -50,12 +84,15 @@ if sentry_dsn:
         send_default_pii=False,
     )
     logging.getLogger(__name__).info("Sentry initialized")
+    _log_load("sentry_sdk.init() done")
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
     handlers=[logging.StreamHandler()],
 )
+_log_load("logging.basicConfig done")
+
 logging.getLogger("src.api.middleware").setLevel(logging.INFO)
 logging.getLogger("slowapi").setLevel(logging.WARNING)
 
@@ -64,7 +101,10 @@ limiter = Limiter(
     default_limits=[f"{max(settings.rate_limit_per_minute, 120)}/minute"],
 )
 
+_log_load("Limiter() done")
+
 logger = logging.getLogger(__name__)
+_log_load("logger created")
 
 _storage_initialized = False
 _reasoning_pipeline = None
@@ -161,6 +201,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_log_load("FastAPI() created")
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
@@ -176,6 +218,8 @@ app.add_middleware(
 )
 
 app.add_middleware(MetricsMiddleware)
+
+_log_load("middleware added")
 
 
 @app.get("/health/live")
@@ -193,3 +237,6 @@ async def root() -> dict[str, Any]:
         "status": "operational",
         "docs": "/docs",
     }
+
+
+_log_load("routes defined — module load complete")
