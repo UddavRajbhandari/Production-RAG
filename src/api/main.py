@@ -127,7 +127,6 @@ def get_ingestion_pipeline() -> IngestionPipeline:
 
 def _register_routes(app: FastAPI) -> None:
     """Register API routes (lazy-imported to minimize startup time)."""
-    t0 = __import__("time").time()
     from src.api.routes import health, ingest, metadata, query  # noqa: F811
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
@@ -149,20 +148,20 @@ def _register_routes(app: FastAPI) -> None:
         tags=["metadata"],
         dependencies=[Depends(verify_api_key)],
     )
-    logger.info("Routes registered in %.2fs", __import__("time").time() - t0)
+    _log_load("Routes registered")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     global _storage_initialized
-    logger.info("Starting Production RAG API...")
+    _log_load("Lifespan started")
 
     # Initialize Sentry for error tracking (graceful no-op if DSN unset)
     # Done in lifespan to avoid blocking module import
     sentry_dsn = os.getenv("SENTRY_DSN")
     if sentry_dsn:
-        logger.info("Sentry DSN found, initializing in lifespan...")
+        _log_load("Sentry DSN found, initializing...")
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -177,22 +176,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 traces_sample_rate=0.1,
                 send_default_pii=False,
             )
-            logger.info("Sentry initialized")
+            _log_load("Sentry initialized")
+            print("[main.py lifespan] Sentry initialized", flush=True)
         except Exception as e:
-            logger.warning("Sentry initialization failed: %s", str(e))
-
-    _register_routes(app)
+            _log_load(f"Sentry initialization failed: {e}")
 
     try:
         app.state.hybrid_retriever = None
-        logger.info("Application ready — storage layer will init on first query")
+        _log_load("Application ready — storage layer will init on first query")
         _storage_initialized = True
     except Exception as e:
-        logger.warning("Storage initialization deferred: %s", str(e))
+        _log_load(f"Storage initialization deferred: {e}")
 
+    _log_load("Lifespan setup complete — yielding")
     yield
 
-    logger.info("Shutting down Production RAG API...")
+    _log_load("Shutting down Production RAG API...")
 
 
 app = FastAPI(
@@ -205,6 +204,8 @@ app = FastAPI(
 )
 
 _log_load("FastAPI() created")
+
+_register_routes(app)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
