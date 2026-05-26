@@ -31,10 +31,23 @@ def get_ingestion_pipeline() -> IngestionPipeline:
     """Lazy-load the ingestion pipeline."""
     global _ingestion_pipeline
     if _ingestion_pipeline is None:
-        from src.ingestion.pipeline import IngestionPipeline
+        try:
+            from src.ingestion.pipeline import IngestionPipeline
 
-        _ingestion_pipeline = IngestionPipeline()
-        logger.info("IngestionPipeline initialized for API")
+            _ingestion_pipeline = IngestionPipeline()
+            logger.info("IngestionPipeline initialized for API")
+        except ImportError as e:
+            logger.error("Failed to import IngestionPipeline: %s", str(e), exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to load ingestion pipeline: {e}. Check that all dependencies are installed.",
+            ) from e
+        except Exception as e:
+            logger.error("Failed to initialize IngestionPipeline: %s", str(e), exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to initialize ingestion pipeline: {e}",
+            ) from e
     return _ingestion_pipeline
 
 
@@ -87,18 +100,26 @@ def _get_embed_model() -> SentenceTransformer:
     global _embed_model
     if _embed_model is None:
         t0 = time.time()
-        import yaml
-        from sentence_transformers import SentenceTransformer
+        try:
+            import yaml
+            from sentence_transformers import SentenceTransformer
 
-        logger.info("Loading embedding model from SentenceTransformer...")
-        with open("config/settings.yaml") as f:
-            config = yaml.safe_load(f)
+            logger.info("Loading embedding model from SentenceTransformer...")
+            if not os.path.exists("config/settings.yaml"):
+                raise FileNotFoundError("config/settings.yaml not found — set working directory to project root")
+            with open("config/settings.yaml") as f:
+                config = yaml.safe_load(f)
 
-        model_name = config["models"]["embedding"]
-        logger.info("Initializing model: %s", model_name)
+            model_name = config.get("models", {}).get("embedding")
+            if not model_name:
+                raise KeyError("models.embedding not found in config/settings.yaml")
+            logger.info("Initializing model: %s", model_name)
 
-        _embed_model = SentenceTransformer(model_name)
-        logger.info("Loaded embedding model in %.1fs", time.time() - t0)
+            _embed_model = SentenceTransformer(model_name)
+            logger.info("Loaded embedding model in %.1fs", time.time() - t0)
+        except Exception as e:
+            logger.error("Failed to load embedding model: %s", str(e), exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to load embedding model: {e}") from e
     return _embed_model
 
 
@@ -113,31 +134,39 @@ def _store_nodes(nodes: list[Any]) -> int:
 
     use_cloud = bool(os.getenv("QDRANT_URL"))
 
-    from src.storage.qdrant_storage import QdrantStorage
+    try:
+        from src.storage.qdrant_storage import QdrantStorage
 
-    qdrant = QdrantStorage()
-    qdrant.create_collection(force_recreate=False)
+        qdrant = QdrantStorage()
+        qdrant.create_collection(force_recreate=False)
 
-    if use_cloud:
-        from src.storage.qdrant_sparse_storage import QdrantSparseStorage
+        if use_cloud:
+            from src.storage.qdrant_sparse_storage import QdrantSparseStorage
 
-        sparse = QdrantSparseStorage()
-        sparse.upsert_dense_and_bm25(nodes, embeddings)
-    else:
-        qdrant.insert_nodes(nodes, embeddings)
+            sparse = QdrantSparseStorage()
+            sparse.upsert_dense_and_bm25(nodes, embeddings)
+        else:
+            qdrant.insert_nodes(nodes, embeddings)
+    except Exception as e:
+        logger.error("Qdrant storage failed: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Vector storage failed: {e}") from e
     t2 = time.time()
     logger.info("Qdrant storage took %.1fs", t2 - t1)
 
     if not use_cloud:
-        from src.storage.bm25_storage import BM25Storage
-
-        bm25 = BM25Storage()
         try:
-            bm25.load()
-            bm25.add_nodes(nodes)
-        except FileNotFoundError:
-            bm25.build_index(nodes)
-        bm25.save()
+            from src.storage.bm25_storage import BM25Storage
+
+            bm25 = BM25Storage()
+            try:
+                bm25.load()
+                bm25.add_nodes(nodes)
+            except FileNotFoundError:
+                bm25.build_index(nodes)
+            bm25.save()
+        except Exception as e:
+            logger.error("BM25 storage failed: %s", str(e), exc_info=True)
+            raise HTTPException(status_code=500, detail=f"BM25 storage failed: {e}") from e
     t3 = time.time()
 
     try:

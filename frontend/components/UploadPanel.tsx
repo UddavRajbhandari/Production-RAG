@@ -79,8 +79,9 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
       formData.append('file', file);
 
       try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
         const response = await fetch(
-          `/api/v1/ingest/file`,
+          `${API_BASE}/api/v1/ingest/file`,
           {
             method: 'POST',
             headers: { 'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || '' },

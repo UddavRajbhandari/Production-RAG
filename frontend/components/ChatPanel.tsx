@@ -127,10 +127,14 @@ function renderBlock(block: string, key: number): React.ReactNode {
 }
 
 function renderMarkdown(text: string): React.ReactNode {
-  const blocks = text.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+  // Pre-process: Ensure single newlines followed by a bullet/number are treated as a block break
+  // This helps when the LLM is stingy with double newlines
+  const processedText = text.replace(/([^\n])\n([-*+]\s|\d+[.)]\s)/g, '$1\n\n$2');
+
+  const blocks = processedText.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
   if (blocks.length === 0) return null;
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {blocks.map((block, i) => renderBlock(block, i))}
     </div>
   );
@@ -307,8 +311,8 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
 
   const stripSourceCitations = (text: string): string => {
     return text
-      .replace(/\s*\([Ss]ource:\s*[^)]+\)\s*/g, '')
-      .replace(/\s*\[[Ss]ource:\s*[^\]]+\]\s*/g, '')
+      .replace(/[ \t]*\([Ss]ource:\s*[^)]+\)[ \t]*/g, '')
+      .replace(/[ \t]*\[[Ss]ource:\s*[^\]]+\][ \t]*/g, '')
       .trim();
   };
 

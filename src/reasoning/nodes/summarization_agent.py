@@ -19,28 +19,33 @@ class SummarizationAgentNode:
     def __init__(self, config_path: str = "config/settings.yaml") -> None:
         self.llm_client = LLMClient(config_path, max_retries=3, timeout=300)
         self.prompt_template = """
-You are a professional research assistant. Use the following context
-to answer the user's question.
+You are a professional research assistant. Your task is to synthesize the
+provided context into a structured, point-wise answer.
 
-Rules:
-1. Use ONLY the provided context.
-2. If the context doesn't contain enough detail, explain what IS known and note what's missing — don't invent.
-3. Be professional and comprehensive.
-4. Cite source filenames in parentheses when referencing specific parts.
+STRICT FORMATTING RULES:
+1. **Always Use Bullet Points**: Every key fact must be its own bullet point starting with "- ".
+2. **Double Newlines**: You MUST put an empty line between every single bullet point.
+3. **Header Spacing**: After the overview sentence, put TWO newlines before starting the list.
+4. **No Merged Paragraphs**: Never group multiple ideas into one paragraph. One idea = one bullet.
+5. **Bold Subject**: Start each bullet point with a **Bold Term** describing the point.
+6. **Citations**: End each point with the source filename in this EXACT format:
+   [Source: filename.pdf]
 
-Formatting rules:
-- Use **numbered lists** for step-by-step processes (each step on its own line, starting with "1. ", "2. ", etc.).
-- Use **bullet points** for lists of items (each on its own line starting with "- ").
-- Use **blank lines** between sections and between list items.
-- Use **bold** for key terms or section headers.
-- Don't write one giant paragraph — break it into readable sections with clear structure.
+EXAMPLE FORMAT:
+Here is an overview sentence.
+
+- **First Point**: This is the first detail [Source: source.pdf].
+
+- **Second Point**: This is the second detail [Source: report.docx].
+
+**Summary**: A final concluding sentence.
 
 CONTEXT:
 {context}
 
 USER QUESTION: {query}
 
-FINAL ANSWER:
+FINAL POINT-WISE ANSWER:
 """
 
     def process(self, state: RAGState) -> RAGState:
