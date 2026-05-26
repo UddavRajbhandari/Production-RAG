@@ -177,9 +177,44 @@ class QdrantStorage:
                 "Collection '%s' already exists — ensuring payload indexes.",
                 self.collection_name,
             )
+            self._check_vector_schema()
 
         # Ensure payload indexes exist (handles both new and pre-existing collections)
         self._ensure_payload_indexes()
+
+    def _check_vector_schema(self) -> None:
+        """Validate collection vector schema matches expected mode.
+
+        Cloud mode expects named vectors ({"dense": ...}), local mode expects
+        unnamed vectors. A mismatch (e.g., collection created in local mode
+        then deployed in cloud mode) causes Qdrant to return all documents
+        ignoring the query vector — every search returns the same results.
+        """
+        try:
+            collection_info = self.client.get_collection(self.collection_name)
+            config = collection_info.config
+            params = config.params
+            vectors_config = getattr(params, "vectors", None)
+
+            if self.mode == "cloud":
+                is_named = isinstance(vectors_config, dict) and "dense" in vectors_config
+                if not is_named:
+                    logger.error(
+                        "Collection '%s' has unnamed vectors but cloud mode expects named "
+                        "vector 'dense'. Searches will return all documents ignoring the query. "
+                        "Delete the collection manually via Qdrant dashboard or set "
+                        "force_recreate=True on QdrantStorage.create_collection().",
+                        self.collection_name,
+                    )
+            else:
+                is_unnamed = not isinstance(vectors_config, dict)
+                if not is_unnamed:
+                    logger.warning(
+                        "Collection '%s' has named vectors but running in local mode. This may cause search issues.",
+                        self.collection_name,
+                    )
+        except Exception as e:
+            logger.warning("Failed to check vector schema: %s", e)
 
     def _ensure_payload_indexes(self) -> None:
         """Create payload indexes for filterable fields used during search.

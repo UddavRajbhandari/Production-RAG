@@ -179,21 +179,31 @@ class QdrantSparseStorage:
                 total,
             )
 
-    def search(self, query: str, top_k: int = 10) -> list[TextNode]:
+    def search(self, query: str, top_k: int = 10, source_files: list[str] | None = None) -> list[TextNode]:
         """
         Search using BM25 sparse vectors via server-side inference.
 
         Args:
             query: Query text
             top_k: Number of results to return
+            source_files: Optional list of source filenames to filter by
 
         Returns:
             List of TextNode objects matching the query
         """
+        qfilter = None
+        if source_files:
+            qfilter = models.Filter(
+                should=[
+                    models.FieldCondition(key="source_file", match=models.MatchValue(value=sf)) for sf in source_files
+                ],
+            )
+
         results = self.client.query_points(
             collection_name=self.collection_name,
             query=models.Document(text=query, model=self.model),
             using=self.vector_name,
+            query_filter=qfilter,
             limit=top_k,
         )
 

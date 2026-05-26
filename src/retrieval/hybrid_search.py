@@ -75,15 +75,20 @@ class HybridRetriever:
             except Exception as e:
                 logger.warning("Failed to reload BM25 index: %s", e)
 
-    def search(self, query: str) -> list[dict[str, Any]]:
+    def search(self, query: str, source_files: list[str] | None = None) -> list[dict[str, Any]]:
         """
         Executes parallel dense and sparse searches.
         Applies Reciprocal Rank Fusion (RRF) and returns top candidates.
+
+        Args:
+            query: The search query text
+            source_files: Optional list of source filenames to filter by.
+                When provided, only chunks from these files are returned.
         """
         year_filter = self._extract_year_filter(query)
 
-        dense_future = self._executor.submit(self._dense_search, query, year_filter)
-        sparse_future = self._executor.submit(self._sparse_search, query, year_filter)
+        dense_future = self._executor.submit(self._dense_search, query, year_filter, source_files)
+        sparse_future = self._executor.submit(self._sparse_search, query, year_filter, source_files)
 
         dense_results = dense_future.result()
         sparse_results = sparse_future.result()
@@ -191,20 +196,50 @@ class HybridRetriever:
             return f"20{short_year}"
         return year
 
-    def _dense_search(self, query: str, year_filter: str | None = None) -> list[Any]:
+    def _dense_search(
+        self,
+        query: str,
+        year_filter: str | None = None,
+        source_files: list[str] | None = None,
+    ) -> list[Any]:
         """Vector search against Qdrant with optional hard metadata filters."""
         query_vector = self.embed_model.encode(query).tolist()
 
         query_filter = None
+        filter_conditions = []
         if year_filter and self.use_cloud_bm25:
             try:
                 from qdrant_client.http import models  # noqa: PLC0415
 
-                query_filter = models.Filter(
-                    must=[models.FieldCondition(key="date", match=models.MatchValue(value=year_filter))]
+                filter_conditions.append(
+                    models.FieldCondition(key="date", match=models.MatchValue(value=year_filter)),
                 )
             except Exception as e:
                 logger.warning("Failed to create date filter: %s - proceeding without filter", e)
+
+        if source_files:
+            try:
+                from qdrant_client.http import models  # noqa: PLC0415
+
+                source_conditions = [
+                    models.FieldCondition(key="source_file", match=models.MatchValue(value=sf)) for sf in source_files
+                ]
+                if len(source_conditions) == 1:
+                    filter_conditions.append(source_conditions[0])
+                else:
+                    filter_conditions.append(
+                        models.FieldCondition(
+                            key="source_file",
+                            match=models.MatchAny(any=list(source_files)),
+                        ),
+                    )
+            except Exception as e:
+                logger.warning("Failed to create source_file filter: %s", e)
+
+        if filter_conditions:
+            from qdrant_client.http import models  # noqa: PLC0415
+
+            query_filter = models.Filter(must=list(filter_conditions))
 
         try:
             if self.use_cloud_bm25:
@@ -244,29 +279,58 @@ class HybridRetriever:
                 logger.error("Dense search failed completely: %s", e2)
                 return []
 
-    def _sparse_search(self, query: str, year_filter: str | None = None) -> list[TextNode]:
+    def _sparse_search(
+        self,
+        query: str,
+        year_filter: str | None = None,
+        source_files: list[str] | None = None,
+    ) -> list[TextNode]:
         """Keyword search using appropriate BM25 backend (cloud or local)."""
         if self.use_cloud_bm25:
-            return self.bm25.search(query, top_k=self.sparse_k)
+            return self.bm25.search(query, top_k=self.sparse_k, source_files=source_files)  # type: ignore[call-arg]
+
+        nodes = self.bm25.nodes
+        if source_files:
+            source_set = set(source_files)
+            nodes = [n for n in nodes if n.metadata.get("source_file") in source_set]
 
         if year_filter:
-            filtered_nodes = [n for n in self.bm25.nodes if n.metadata.get("date") == year_filter]
+            filtered_nodes = [n for n in nodes if n.metadata.get("date") == year_filter]
             if not filtered_nodes:
                 logger.warning(
-                    "Year filter '%s' matched 0 nodes — falling back to full index.",
+                    "Year filter '%s' matched 0 nodes — falling back to filtered nodes.",
                     year_filter,
                 )
-                return self.bm25.search(query, top_k=self.sparse_k)
+                from rank_bm25 import BM25Okapi
+
+                tokenized_corpus = [n.text.lower().split() for n in nodes]
+                temp_bm25 = BM25Okapi(tokenized_corpus)
+                tokenized_query = query.lower().split()
+                raw_scores = temp_bm25.get_scores(tokenized_query)
+                scored = [(i, float(raw_scores[i])) for i in range(len(raw_scores)) if float(raw_scores[i]) > 0.0]
+                scored.sort(key=lambda x: x[1], reverse=True)
+                return [nodes[i] for i, _ in scored[: self.sparse_k]]
 
             from rank_bm25 import BM25Okapi
 
-            tokenized_corpus = [node.text.lower().split() for node in filtered_nodes]
+            tokenized_corpus = [n.text.lower().split() for n in filtered_nodes]
             temp_bm25 = BM25Okapi(tokenized_corpus)
             tokenized_query = query.lower().split()
             raw_scores = temp_bm25.get_scores(tokenized_query)
             scored = [(i, float(raw_scores[i])) for i in range(len(raw_scores)) if float(raw_scores[i]) > 0.0]
             scored.sort(key=lambda x: x[1], reverse=True)
             return [filtered_nodes[i] for i, _ in scored[: self.sparse_k]]
+
+        if source_files or nodes is not self.bm25.nodes:
+            from rank_bm25 import BM25Okapi
+
+            tokenized_corpus = [n.text.lower().split() for n in nodes]
+            temp_bm25 = BM25Okapi(tokenized_corpus)
+            tokenized_query = query.lower().split()
+            raw_scores = temp_bm25.get_scores(tokenized_query)
+            scored = [(i, float(raw_scores[i])) for i in range(len(raw_scores)) if float(raw_scores[i]) > 0.0]
+            scored.sort(key=lambda x: x[1], reverse=True)
+            return [nodes[i] for i, _ in scored[: self.sparse_k]]
 
         return self.bm25.search(query, top_k=self.sparse_k)
 

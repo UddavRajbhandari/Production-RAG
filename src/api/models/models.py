@@ -62,6 +62,10 @@ class QueryRequest(BaseModel):
         description="User's own OpenRouter API key (optional). "
         "If not provided, system attempts Ollama. Key is never stored — used only for this request.",
     )
+    source_files: list[str] = Field(
+        default_factory=list,
+        description="Filter results to only these source file names. When empty, searches all documents.",
+    )
 
     model_config = {"json_schema_extra": {"example": {"query": "What is the project about?"}}}
 

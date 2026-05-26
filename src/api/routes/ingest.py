@@ -93,6 +93,27 @@ def _save_uploaded_file(content: bytes, filename: str | None) -> tuple[str, bool
 
 
 _embed_model: SentenceTransformer | None = None
+_EMBED_MODEL_DOWNLOAD_TIMEOUT = 180  # seconds
+
+
+def preload_embedding_model() -> None:
+    """Pre-load the SentenceTransformer model at startup.
+
+    Called from the lifespan context manager to download the model
+    during startup (Render's startup timeout is generous) rather than
+    on the first upload (where health checks race against the download).
+    """
+    global _embed_model
+    if _embed_model is not None:
+        return
+    logger.info("Pre-loading embedding model at startup...")
+    t0 = time.time()
+    try:
+        _get_embed_model()
+        logger.info("Embedding model pre-loaded in %.1fs", time.time() - t0)
+    except Exception as e:
+        logger.error("Failed to pre-load embedding model: %s", str(e), exc_info=True)
+        raise
 
 
 def _get_embed_model() -> SentenceTransformer:
@@ -115,8 +136,22 @@ def _get_embed_model() -> SentenceTransformer:
                 raise KeyError("models.embedding not found in config/settings.yaml")
             logger.info("Initializing model: %s", model_name)
 
-            _embed_model = SentenceTransformer(model_name)
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(SentenceTransformer, model_name)
+                _embed_model = future.result(timeout=_EMBED_MODEL_DOWNLOAD_TIMEOUT)
             logger.info("Loaded embedding model in %.1fs", time.time() - t0)
+        except concurrent.futures.TimeoutError:
+            logger.error("Embedding model download timed out after %ds", _EMBED_MODEL_DOWNLOAD_TIMEOUT)
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Embedding model download timed out after {_EMBED_MODEL_DOWNLOAD_TIMEOUT}s. "
+                    "The model is downloaded on first use and may take 1-2 minutes on Render's free tier. "
+                    "Try again — subsequent requests use the cached model."
+                ),
+            ) from None
         except Exception as e:
             logger.error("Failed to load embedding model: %s", str(e), exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to load embedding model: {e}") from e
@@ -268,8 +303,19 @@ async def ingest_file(file: UploadFile, request: Request) -> IngestResponse:
             logger.warning("Ingestion pipeline produced no chunks for %s", file.filename)
             raise HTTPException(status_code=400, detail="No content could be extracted from the file")
 
+        # Override source_file to the original upload filename (pipeline uses
+        # content-hashed path by default). This ensures downstream filtering
+        # by session file names actually matches.
+        original_name = file.filename or os.path.basename(save_path)
+        for node in nodes:
+            node.metadata["source_file"] = original_name
+
         logger.info("Starting storage process...")
-        chunks_created = await asyncio.to_thread(_store_nodes, nodes)
+        _storage_timeout = 240
+        chunks_created = await asyncio.wait_for(
+            asyncio.to_thread(_store_nodes, nodes),
+            timeout=_storage_timeout,
+        )
         logger.info("Storage process completed: %d chunks", chunks_created)
 
         if not bool(os.getenv("QDRANT_URL")):
@@ -285,6 +331,13 @@ async def ingest_file(file: UploadFile, request: Request) -> IngestResponse:
 
     except HTTPException:
         raise
+    except asyncio.TimeoutError:
+        logger.error("File ingestion timed out during storage process")
+        raise HTTPException(
+            status_code=503,
+            detail="File ingestion timed out. The embedding model or vector storage is taking too long. "
+            "On a fresh deploy, the first upload downloads the model (~80MB) - try again in 2 minutes.",
+        ) from None
     except Exception as e:
         logger.error("File ingestion failed: %s", str(e))
         raise HTTPException(status_code=500, detail="File ingestion failed") from e

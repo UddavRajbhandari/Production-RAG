@@ -3,6 +3,7 @@ export interface QueryRequest {
   stream?: boolean;
   include_sources?: boolean;
   llm_api_key?: string | null;
+  source_files?: string[];
 }
 
 export interface Source {

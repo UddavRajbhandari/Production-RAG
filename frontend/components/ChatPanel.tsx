@@ -372,14 +372,16 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
       if (mode === 'retrieve') {
         const result = await retrieveQuery({ query: trimmedInput });
         const sources = result.results || [];
-        const summary = sources.length > 0
-          ? `Found ${sources.length} relevant document${sources.length > 1 ? 's' : ''}`
+        const content = sources.length > 0
+          ? sources.map((s, i) =>
+              `**${i + 1}. ${s.source || 'Source'}** (${(s.score * 100).toFixed(1)}%)\n${s.text}`
+            ).join('\n\n---\n\n')
           : 'No relevant documents found';
-        streamingContentRef.current = summary;
+        streamingContentRef.current = content;
         streamingMetaRef.current = { sources, node_evaluations: null, validation_passed: true, latency_ms: 0, error_message: null, ragas_scores: null };
-        setStreamingContent(summary);
+        setStreamingContent(content);
         setStreamingMetadata(streamingMetaRef.current);
-        finalizeStream(userMessages, assistantId, summary, streamingMetaRef.current);
+        finalizeStream(userMessages, assistantId, content, streamingMetaRef.current);
       } else {
         await queryStream(
           { query: trimmedInput, include_sources: true, llm_api_key: llmApiKey || null },

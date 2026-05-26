@@ -132,7 +132,7 @@ export async function retrieveQuery(request: QueryRequest): Promise<RetrieveResp
   const response = await fetch(`${API_BASE}/api/v1/query/retrieve`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ query: request.query }),
+    body: JSON.stringify(request),
   });
   return handleResponse<RetrieveResponse>(response);
 }

@@ -176,10 +176,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     try:
         app.state.hybrid_retriever = None
-        _log_load("Application ready — storage layer will init on first query")
+        _log_load("Application ready — pre-loading embedding model...")
+
+        import asyncio
+
+        from src.api.routes.ingest import preload_embedding_model
+
+        await asyncio.to_thread(preload_embedding_model)
+        _log_load("Embedding model pre-loaded")
         _storage_initialized = True
     except Exception as e:
-        _log_load(f"Storage initialization deferred: {e}")
+        _log_load(f"Startup initialization failed: {e}")
+        raise
 
     _log_load("Lifespan setup complete — yielding")
     yield

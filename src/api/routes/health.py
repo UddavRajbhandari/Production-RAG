@@ -4,8 +4,10 @@ Health check endpoint for monitoring and load balancers.
 Reports storage mode (cloud vs local) and component health.
 """
 
+import concurrent.futures
 import logging
 import os
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import APIRouter
@@ -46,41 +48,65 @@ def _get_llm_mode() -> str:
     return "none"
 
 
+_HEALTH_CHECK_TIMEOUT = 5  # seconds
+
+
+def _run_with_timeout(func: Callable[..., tuple[str, str]], timeout: int = _HEALTH_CHECK_TIMEOUT) -> tuple[str, str]:
+    """Run a blocking function with a timeout."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(func)
+        return future.result(timeout=timeout)
+
+
 def _check_qdrant() -> tuple[str, str]:
-    """Check Qdrant connection."""
+    """Check Qdrant connection (with timeout)."""
     try:
-        import logging
 
-        logging.getLogger("src.storage.qdrant_storage").setLevel(logging.WARNING)
-        from src.storage.qdrant_storage import QdrantStorage
+        def _check() -> tuple[str, str]:
+            import logging  # noqa: F811 — re-import within inner func
 
-        client = QdrantStorage()
-        client.client.get_collections()
-        mode = "cloud" if os.getenv("QDRANT_URL") else "local"
-        return "healthy", f"Connected ({mode} mode)"
+            logging.getLogger("src.storage.qdrant_storage").setLevel(logging.WARNING)
+            from src.storage.qdrant_storage import QdrantStorage
+
+            client = QdrantStorage()
+            client.client.get_collections()
+            mode = "cloud" if os.getenv("QDRANT_URL") else "local"
+            return "healthy", f"Connected ({mode} mode)"
+
+        return _run_with_timeout(_check)
+    except concurrent.futures.TimeoutError:
+        logger.warning("Qdrant health check timed out after %ds", _HEALTH_CHECK_TIMEOUT)
+        return "degraded", "timeout"
     except Exception as e:
         logger.warning("Qdrant health check failed: %s", str(e))
         return "unhealthy", str(e)
 
 
 def _check_bm25() -> tuple[str, str]:
-    """Check BM25 storage (local pickle or Qdrant native)."""
+    """Check BM25 storage (local pickle or Qdrant native, with timeout)."""
     try:
-        import logging
 
-        logging.getLogger("src.storage.qdrant_sparse_storage").setLevel(logging.WARNING)
-        logging.getLogger("src.storage.bm25_storage").setLevel(logging.WARNING)
-        if os.getenv("QDRANT_URL"):
-            from src.storage.qdrant_sparse_storage import QdrantSparseStorage
+        def _check() -> tuple[str, str]:
+            import logging  # noqa: F811
 
-            _ = QdrantSparseStorage()
-            return "healthy", "Qdrant native BM25 (cloud)"
-        else:
-            from src.storage.bm25_storage import BM25Storage
+            logging.getLogger("src.storage.qdrant_sparse_storage").setLevel(logging.WARNING)
+            logging.getLogger("src.storage.bm25_storage").setLevel(logging.WARNING)
+            if os.getenv("QDRANT_URL"):
+                from src.storage.qdrant_sparse_storage import QdrantSparseStorage
 
-            bm25 = BM25Storage()
-            bm25.load()
-            return "healthy", f"Local pickle ({len(bm25.nodes)} nodes)"
+                _ = QdrantSparseStorage()
+                return "healthy", "Qdrant native BM25 (cloud)"
+            else:
+                from src.storage.bm25_storage import BM25Storage
+
+                bm25 = BM25Storage()
+                bm25.load()
+                return "healthy", f"Local pickle ({len(bm25.nodes)} nodes)"
+
+        return _run_with_timeout(_check)
+    except concurrent.futures.TimeoutError:
+        logger.warning("BM25 health check timed out after %ds", _HEALTH_CHECK_TIMEOUT)
+        return "degraded", "timeout"
     except FileNotFoundError:
         return "unhealthy", "Index not found"
     except Exception as e:
@@ -89,9 +115,12 @@ def _check_bm25() -> tuple[str, str]:
 
 
 def _check_postgres() -> tuple[str, str]:
-    """Check Neon/Postgres connection."""
+    """Check Neon/Postgres connection (with timeout)."""
     try:
-        if os.getenv("DATABASE_URL"):
+        if not os.getenv("DATABASE_URL"):
+            return "healthy", "SQLite (local dev)"
+
+        def _check() -> tuple[str, str]:
             from sqlalchemy import text
 
             from src.storage.neon_storage import NeonStorage
@@ -101,8 +130,11 @@ def _check_postgres() -> tuple[str, str]:
             session.execute(text("SELECT 1"))
             session.close()
             return "healthy", "Neon connected"
-        else:
-            return "healthy", "SQLite (local dev)"
+
+        return _run_with_timeout(_check)
+    except concurrent.futures.TimeoutError:
+        logger.warning("Postgres health check timed out after %ds", _HEALTH_CHECK_TIMEOUT)
+        return "degraded", "timeout"
     except Exception as e:
         logger.warning("Postgres health check failed: %s", str(e))
         return "unhealthy", str(e)

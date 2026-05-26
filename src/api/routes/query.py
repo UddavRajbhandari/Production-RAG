@@ -162,9 +162,14 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
     """
     try:
         retriever = get_hybrid_retriever()
-        logger.info("Retrieving documents for: %s...", request.query[:100])
+        logger.info(
+            "Retrieving documents for: %s... (source_files=%s)",
+            request.query[:100],
+            request.source_files or "all",
+        )
 
-        results = retriever.search(request.query)
+        source_filter = request.source_files if request.source_files else None
+        results = retriever.search(request.query, source_files=source_filter)
 
         sources = [
             {
