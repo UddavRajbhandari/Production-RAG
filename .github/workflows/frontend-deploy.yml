@@ -1,15 +1,18 @@
-# Cloudflare Pages Deployment Configuration
-# For Production RAG Frontend
+# Frontend Build Check
+# Verifies the frontend builds successfully (built into the Docker image at deploy time)
 
-name: Frontend Deploy
+name: Frontend Check
 on:
   push:
+    branches: [main, feat/**]
+    paths: ['frontend/**']
+  pull_request:
     branches: [main]
     paths: ['frontend/**']
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,17 +36,3 @@ jobs:
 
       - name: Build
         run: cd frontend && npm run build
-        env:
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
-          ALLOWED_ORIGIN: ${{ vars.ALLOWED_ORIGIN }}
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: production-rag-frontend
-          directory: frontend/.next
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          wranglerVersion: '3'
