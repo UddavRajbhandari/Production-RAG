@@ -38,6 +38,11 @@ tests/
 *.md
 !requirements.txt
 !pyproject.toml
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
+!frontend/next.config.*
+!frontend/.eslintrc.*
 
 # OS
 .DS_Store
