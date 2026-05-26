@@ -28,7 +28,9 @@ def get_neon_storage() -> NeonStorage:
     """Lazy-load the Neon storage."""
     from src.storage.neon_storage import NeonStorage
 
-    return NeonStorage()
+    storage = NeonStorage()
+    storage.create_tables(force_recreate=False)
+    return storage
 
 
 @router.post("/metadata/query", response_model=MetadataQueryResponse)

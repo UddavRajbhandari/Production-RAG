@@ -29,6 +29,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         """
         Process the request and log metadata.
         """
+        # Skip logging for health checks to reduce noise
+        if request.url.path.endswith("/health/live") or request.url.path.endswith("/health/ready"):
+            return await call_next(request)
+
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
 
         # Attach request_id to request state for use in routes

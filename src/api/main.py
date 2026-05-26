@@ -71,6 +71,15 @@ _log_load("Settings() already done in models")
 logging.getLogger("src.api.middleware").setLevel(logging.INFO)
 logging.getLogger("slowapi").setLevel(logging.WARNING)
 
+
+# Silence uvicorn access logs for health checks
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/health/live" not in record.getMessage() and "/health/ready" not in record.getMessage()
+
+
+logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
+
 limiter = Limiter(
     key_func=get_rate_limit_key,
     default_limits=[f"{max(settings.rate_limit_per_minute, 120)}/minute"],

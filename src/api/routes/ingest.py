@@ -90,9 +90,14 @@ def _get_embed_model() -> SentenceTransformer:
         import yaml
         from sentence_transformers import SentenceTransformer
 
+        logger.info("Loading embedding model from SentenceTransformer...")
         with open("config/settings.yaml") as f:
             config = yaml.safe_load(f)
-        _embed_model = SentenceTransformer(config["models"]["embedding"])
+
+        model_name = config["models"]["embedding"]
+        logger.info("Initializing model: %s", model_name)
+
+        _embed_model = SentenceTransformer(model_name)
         logger.info("Loaded embedding model in %.1fs", time.time() - t0)
     return _embed_model
 
@@ -224,14 +229,19 @@ async def ingest_file(file: UploadFile, request: Request) -> IngestResponse:
 
         import asyncio
 
+        logger.info("Starting ingestion pipeline for %s", save_path)
+
         pipeline = get_ingestion_pipeline()
         nodes = await asyncio.to_thread(pipeline.run, save_path)
+        logger.info("Pipeline completed: %d nodes created", len(nodes) if nodes else 0)
 
         if not nodes:
             logger.warning("Ingestion pipeline produced no chunks for %s", file.filename)
             raise HTTPException(status_code=400, detail="No content could be extracted from the file")
 
+        logger.info("Starting storage process...")
         chunks_created = await asyncio.to_thread(_store_nodes, nodes)
+        logger.info("Storage process completed: %d chunks", chunks_created)
 
         if not bool(os.getenv("QDRANT_URL")):
             _refresh_bm25(request)
