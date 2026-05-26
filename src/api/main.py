@@ -158,7 +158,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _log_load("Lifespan started")
 
     # Initialize Sentry for error tracking (graceful no-op if DSN unset)
-    # Done in lifespan to avoid blocking module import
+    # DISABLED: Appears to be blocking startup on Render's hardware/environment
+    """
     sentry_dsn = os.getenv("SENTRY_DSN")
     if sentry_dsn:
         _log_load("Sentry DSN found, initializing...")
@@ -180,6 +181,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             print("[main.py lifespan] Sentry initialized", flush=True)
         except Exception as e:
             _log_load(f"Sentry initialization failed: {e}")
+    """
+    _log_load("Sentry initialization skipped (disabled)")
 
     try:
         app.state.hybrid_retriever = None
