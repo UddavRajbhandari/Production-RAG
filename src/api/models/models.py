@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     }
 
 
+# Global settings singleton
+settings = Settings()
+
+
 class QueryRequest(BaseModel):
     """Request model for query endpoint."""
 
