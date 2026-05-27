@@ -219,17 +219,6 @@ def _store_nodes(nodes: list[Any]) -> int:
     return len(nodes)
 
 
-def _refresh_bm25(request: Request) -> None:
-    """Reload BM25 index in the hybrid retriever singleton."""
-    retriever = getattr(request.app.state, "hybrid_retriever", None)
-    if retriever is not None:
-        try:
-            retriever.reload_bm25()
-            logger.info("HybridRetriever BM25 reloaded after ingest")
-        except Exception as e:
-            logger.warning("Failed to reload HybridRetriever BM25: %s", e)
-
-
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_document(request: IngestRequest) -> IngestResponse:
     """
@@ -310,22 +299,47 @@ async def ingest_file(file: UploadFile, request: Request) -> IngestResponse:
         for node in nodes:
             node.metadata["source_file"] = original_name
 
-        logger.info("Starting storage process...")
-        _storage_timeout = 240
-        chunks_created = await asyncio.wait_for(
-            asyncio.to_thread(_store_nodes, nodes),
-            timeout=_storage_timeout,
+        # Return immediately — storage runs in background to avoid Render's
+        # 60-second response timeout. Qdrant + Neon storage for 600+ chunks
+        # can take >60s on Render's free tier, causing a 502/503 timeout.
+        # The frontend records the upload as "processing" and data becomes
+        # available once the background task completes.
+        app_state = request.app.state
+
+        async def _background_store(
+            nodes: list[Any],
+            state: object,
+            filename: str,
+        ) -> None:
+            """Run storage in background task with proper error handling."""
+            try:
+                chunk_count = await asyncio.to_thread(_store_nodes, nodes)
+                if not bool(os.getenv("QDRANT_URL")):
+                    retriever = getattr(state, "hybrid_retriever", None)
+                    if retriever is not None:
+                        retriever.reload_bm25()
+                        logger.info("HybridRetriever BM25 reloaded after ingest")
+                logger.info(
+                    "Background storage completed: %d chunks for %s",
+                    chunk_count,
+                    filename,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Background storage failed for %s: %s",
+                    filename,
+                    str(exc),
+                    exc_info=True,
+                )
+
+        asyncio.create_task(
+            _background_store(nodes, app_state, file.filename or "unknown"),
         )
-        logger.info("Storage process completed: %d chunks", chunks_created)
-
-        if not bool(os.getenv("QDRANT_URL")):
-            _refresh_bm25(request)
-
-        logger.info("Successfully ingested %s: %d chunks created", file.filename, chunks_created)
+        logger.info("Queued %d chunks for background storage", len(nodes))
 
         return IngestResponse(
-            status="success",
-            chunks_created=chunks_created,
+            status="processing",
+            chunks_created=len(nodes),
             document_id=doc_id,
         )
 

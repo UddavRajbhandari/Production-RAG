@@ -26,7 +26,7 @@ from src.storage.qdrant_storage import QdrantStorage
 logger = logging.getLogger(__name__)
 
 # Smaller batch size for cloud uploads to avoid timeout
-_BATCH_SIZE = 32
+_BATCH_SIZE = 256
 _UPSERT_TIMEOUT = 120  # seconds
 
 
