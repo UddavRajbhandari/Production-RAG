@@ -1,10 +1,11 @@
 """
 Strategist Node Implementation
-Heuristic validation of answer coherence and formatting.
+Heuristic validation of answer coherence, formatting, and citations.
 (NO LLM Required - Heuristic)
 """
 
 import logging
+import re
 import time
 
 from src.reasoning.state import RAGState
@@ -13,22 +14,42 @@ logger = logging.getLogger(__name__)
 
 
 class StrategistNode:
-    """Final node that checks structural requirements (length, sources)."""
+    """Final node that checks structural requirements (length, sources, citations)."""
 
     def process(self, state: RAGState) -> RAGState:
         """Performs non-LLM checks on the final state."""
         start_time = time.perf_counter()
 
-        # Heuristic 1: Minimum length check
-        if len(state["generated_answer"]) < 50:
+        no_context = state["generated_answer"] == "No context retrieved to generate an answer."
+
+        # Heuristic 1: Minimum length check (skip when no context retrieved)
+        if not no_context and len(state["generated_answer"]) < 50:
             state["validation_passed"] = False
             state["error_message"] = "Strategist: Answer too brief."
 
-        # Heuristic 2: Source citation presence (simple check)
-        has_source = "Source:" in state["generated_answer"]
-        has_pdf = ".pdf" in state["generated_answer"]
-        if not has_source and not has_pdf:
-            logger.warning("Strategist: No clear citations in answer.")
+        # Populate unique source files from retrieved context
+        source_files: list[str] = []
+        for ctx in state.get("retrieved_context", []):
+            sf = ctx.get("metadata", {}).get("source_file")
+            if sf and sf not in source_files:
+                source_files.append(sf)
+        state["source_files"] = source_files
+
+        # Heuristic 2: Source citation presence in answer text
+        # Only check if no prior validation failure and context was retrieved
+        if state["validation_passed"] and not no_context:
+            answer = state["generated_answer"]
+            # Check for [Source: ...] pattern (case-insensitive)
+            citation_matches = re.findall(r"\[source:\s*([^\]]+)\]", answer, re.IGNORECASE)
+            # Check for (Source: ...) parenthetical pattern (case-insensitive)
+            paren_matches = re.findall(r"\(source:\s*([^)]+)\)", answer, re.IGNORECASE)
+            # Check if any known source filename appears in the answer
+            file_in_answer = any(sf in answer for sf in source_files)
+
+            has_citation = bool(citation_matches) or bool(paren_matches) or file_in_answer
+            if not has_citation:
+                state["validation_passed"] = False
+                state["error_message"] = "Strategist: Answer missing source citations."
 
         latency = (time.perf_counter() - start_time) * 1000
         state["node_latency_ms"]["strategist"] = latency

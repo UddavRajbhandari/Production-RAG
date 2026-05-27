@@ -63,6 +63,10 @@ def sample_rag_state() -> RAGState:
         "error_message": None,
         "node_latency_ms": {},
         "total_latency_ms": 0.0,
+        "llm_api_key": None,
+        "pii_redacted_query": None,
+        "total_tokens_used": 0,
+        "source_files": [],
     }
 
 

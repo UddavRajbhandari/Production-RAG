@@ -8,6 +8,8 @@ from typing import cast
 
 from langgraph.graph import END, StateGraph
 
+from src.api.guardrails.pii_mask import PIIMask
+from src.api.guardrails.token_budget import TokenBudget
 from src.reasoning.nodes.auditor import AuditorNode
 from src.reasoning.nodes.calculation_agent import CalculationAgentNode
 from src.reasoning.nodes.gatekeeper import GatekeeperNode
@@ -25,6 +27,8 @@ class ReasoningPipeline:
     """Orchestrator for the LangGraph-based reasoning process."""
 
     def __init__(self) -> None:
+        self.pii_mask = PIIMask()
+        self.token_budget = TokenBudget()
         # Initialize nodes
         self.planner = PlannerNode()
         self.router = RouterNode()
@@ -63,8 +67,9 @@ class ReasoningPipeline:
         )
 
         # 4. Standard sequential paths
+        # Calculation agent produces a formatted answer directly, skip summarization
         workflow.add_edge("retrieval_agent", "summarization_agent")
-        workflow.add_edge("calculation_agent", "summarization_agent")
+        workflow.add_edge("calculation_agent", "gatekeeper")
         workflow.add_edge("summarization_agent", "gatekeeper")
         workflow.add_edge("gatekeeper", "auditor")
         workflow.add_edge("auditor", "strategist")
@@ -73,9 +78,41 @@ class ReasoningPipeline:
         self.app = workflow.compile()
 
     def run(self, query: str, llm_api_key: str | None = None) -> RAGState:
-        """Executes the pipeline for a single query."""
+        """Executes the pipeline for a single query.
+
+        Applies PII redaction and token budget check before processing.
+        """
+        query_tokens = self.token_budget.count_tokens(query)
+
+        # Step 1: Token budget check
+        allowed, reason = self.token_budget.check_query(query)
+        if not allowed:
+            return {
+                "query": query,
+                "generated_answer": f"Query rejected: {reason}",
+                "sub_tasks": [],
+                "retrieved_context": [],
+                "current_node": "",
+                "validation_passed": False,
+                "error_message": reason,
+                "node_latency_ms": {},
+                "total_latency_ms": 0.0,
+                "llm_api_key": llm_api_key,
+                "pii_redacted_query": None,
+                "total_tokens_used": query_tokens,
+                "source_files": [],
+            }
+
+        # Step 2: PII redaction
+        pii_redacted: str | None = None
+        pipeline_query = query
+        if self.pii_mask.contains_pii(query):
+            pii_redacted = self.pii_mask.redact(query)
+            pipeline_query = pii_redacted
+            logger.info("PII detected in query — using redacted version for pipeline")
+
         initial_state: RAGState = {
-            "query": query,
+            "query": pipeline_query,
             "generated_answer": "",
             "sub_tasks": [],
             "retrieved_context": [],
@@ -85,8 +122,20 @@ class ReasoningPipeline:
             "node_latency_ms": {},
             "total_latency_ms": 0.0,
             "llm_api_key": llm_api_key,
+            "pii_redacted_query": pii_redacted,
+            "total_tokens_used": 0,
+            "source_files": [],
         }
 
-        logger.info("Starting reasoning pipeline for query: %s", query)
+        query_for_log = pii_redacted or query
+        logger.info("Starting reasoning pipeline for query: %s", query_for_log[:200])
         result = self.app.invoke(initial_state)
+
+        estimated_total = (
+            query_tokens
+            + self.token_budget.count_tokens(result.get("generated_answer", ""))
+            + self.token_budget.count_tokens(str(result.get("retrieved_context", [])))
+        )
+        result["total_tokens_used"] = estimated_total
+
         return cast(RAGState, result)

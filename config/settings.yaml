@@ -1,3 +1,20 @@
+guardrails:
+  pii:
+    enabled: true
+    sensitivity_threshold: 3
+  semantic_cache:
+    enabled: true
+    similarity_threshold: 0.92
+    max_size: 256
+    ttl_seconds: 3600
+  token_budget:
+    enabled: true
+    max_query_tokens: 2000
+    max_context_tokens: 8000
+    max_total_tokens: 30000
+  prompt_injection:
+    enabled: true
+
 monitoring:
   metrics:
     enabled: true

@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
+from src.api.guardrails.pii_mask import PIIMask
+from src.api.guardrails.semantic_cache import SemanticCache
 from src.api.middleware.metrics import update_ragas_metrics
 from src.api.models import QueryRequest, QueryResponse
 from src.evaluation.ragas_evaluator import evaluate as evaluate_ragas
@@ -29,6 +31,25 @@ router = APIRouter()
 # Lazy-loaded module instances
 _hybrid_retriever = None
 _reasoning_pipeline = None
+_pii_mask = None
+_semantic_cache = None
+
+
+def get_pii_mask() -> PIIMask:
+    """Lazy-load the PII mask."""
+    global _pii_mask
+    if _pii_mask is None:
+        _pii_mask = PIIMask()
+    return _pii_mask
+
+
+def get_semantic_cache() -> SemanticCache:
+    """Lazy-load the semantic cache."""
+    global _semantic_cache
+    if _semantic_cache is None:
+        _semantic_cache = SemanticCache()
+        logger.info("SemanticCache initialized for API")
+    return _semantic_cache
 
 
 def get_hybrid_retriever() -> HybridRetriever:
@@ -73,9 +94,14 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
                 "text": ctx.get("text", "")[:500],
                 "score": round(ctx.get("rrf_score", 0), 4),
                 "source": ctx.get("source", "unknown"),
+                "source_file": ctx.get("metadata", {}).get("source_file", "unknown"),
+                "chunk_index": ctx.get("metadata", {}).get("chunk_index", None),
             }
             for ctx in result.get("retrieved_context", [])[:5]
         ]
+
+    # Unique source filenames cited in the answer
+    source_files = result.get("source_files", [])
 
     node_evaluations: list[dict] = []
     node_latencies = result.get("node_latency_ms", {})
@@ -104,11 +130,13 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
     return {
         "answer": result.get("generated_answer", ""),
         "sources": sources,
+        "source_files": source_files,
         "latency_ms": latency_ms,
         "validation_passed": result.get("validation_passed", True),
         "error_message": result.get("error_message"),
         "node_evaluations": (node_evaluations if any(ne["latency_ms"] > 0 for ne in node_evaluations) else None),
         "ragas_scores": ragas_scores,
+        "total_tokens_used": result.get("total_tokens_used", 0),
     }
 
 
@@ -118,24 +146,61 @@ async def query(request: QueryRequest) -> QueryResponse:
 
     Processes the query through the LangGraph reasoning engine
     and returns the generated answer with sources.
+
+    Guardrails applied:
+    - Semantic cache (return cached answer for similar queries)
+    - PII redaction (redact PII from output answer)
+    - Token budget (reject overly long queries)
+    - Prompt injection hardening (in system prompts)
     """
     start_time = time.time()
 
     try:
+        # Semantic cache check
+        cache = get_semantic_cache()
+        cached = cache.get(request.query)
+        if cached is not None:
+            logger.info("Returning cached response for query: %s...", request.query[:60])
+            pii_mask = get_pii_mask()
+            clean_answer = pii_mask.redact(cached) if pii_mask.contains_pii(cached) else cached
+            return QueryResponse(
+                answer=clean_answer,
+                sources=None,
+                latency_ms=(time.time() - start_time) * 1000,
+                validation_passed=True,
+                error_message=None,
+                node_evaluations=None,
+                ragas_scores=None,
+                total_tokens_used=0,
+            )
+
         pipeline = get_reasoning_pipeline()
         logger.info("Processing query: %s...", request.query[:100])
 
         result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
         built = _build_pipeline_response(result, start_time, request.include_sources)
 
+        # Cache the generated answer
+        answer = built.get("answer", "")
+        if answer and "Error" not in answer and "rejected" not in answer:
+            cache.set(request.query, answer)
+
+        # Output PII redaction on the answer
+        pii_mask = get_pii_mask()
+        if pii_mask.contains_pii(answer):
+            built["answer"] = pii_mask.redact(answer)
+            logger.info("PII redacted from output answer")
+
         return QueryResponse(
             answer=built["answer"],
             sources=built["sources"],
+            source_files=built.get("source_files", []),
             latency_ms=built["latency_ms"],
             validation_passed=built["validation_passed"],
             error_message=built["error_message"],
             node_evaluations=built["node_evaluations"],
             ragas_scores=built["ragas_scores"],
+            total_tokens_used=built.get("total_tokens_used", 0),
         )
 
     except Exception as e:

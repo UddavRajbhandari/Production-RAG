@@ -31,3 +31,8 @@ class RAGState(TypedDict):
 
     # --- LLM Configuration ---
     llm_api_key: str | None  # User-provided key for this request (optional)
+
+    # --- Guardrails ---
+    pii_redacted_query: str | None  # Query with PII redacted (if PII was detected)
+    total_tokens_used: int  # Total tokens consumed across all LLM calls
+    source_files: list[str]  # Unique source filenames cited in the answer

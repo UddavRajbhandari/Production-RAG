@@ -103,6 +103,7 @@ class QueryResponse(BaseModel):
 
     answer: str = Field(..., description="Generated answer from RAG pipeline")
     sources: list[dict] | None = Field(default=None, description="Source documents used")
+    source_files: list[str] = Field(default_factory=list, description="Unique source filenames cited")
     latency_ms: float = Field(..., description="Total processing latency in milliseconds")
     validation_passed: bool = Field(..., description="Whether response passed validation")
     error_message: str | None = Field(default=None, description="Validation error message from nodes")
@@ -114,6 +115,7 @@ class QueryResponse(BaseModel):
         description="Per-query RAGAS evaluation scores (context_precision, answer_relevancy, "
         "answer_completeness, faithfulness)",
     )
+    total_tokens_used: int = Field(default=0, description="Total tokens consumed across all LLM calls")
 
 
 class IngestRequest(BaseModel):
