@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
@@ -17,6 +18,7 @@ from src.api.guardrails.pii_mask import PIIMask
 from src.api.guardrails.semantic_cache import SemanticCache
 from src.api.middleware.metrics import update_ragas_metrics
 from src.api.models import QueryRequest, QueryResponse
+from src.api.query_tracker import query_tracker
 from src.evaluation.ragas_evaluator import evaluate as evaluate_ragas
 from src.reasoning.state import RAGState
 
@@ -153,6 +155,7 @@ async def query(request: QueryRequest) -> QueryResponse:
     - Token budget (reject overly long queries)
     - Prompt injection hardening (in system prompts)
     """
+    request_id = str(uuid.uuid4())
     start_time = time.time()
 
     try:
@@ -175,14 +178,19 @@ async def query(request: QueryRequest) -> QueryResponse:
             )
 
         pipeline = get_reasoning_pipeline()
-        logger.info("Processing query: %s...", request.query[:100])
+        logger.info("Processing query (req=%s): %s...", request_id, request.query[:100])
 
-        result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
+        query_tracker.start(request_id, request.query)
+        try:
+            result = pipeline.run(request.query, llm_api_key=request.llm_api_key, request_id=request_id)
+        finally:
+            query_tracker.finish(request_id)
+
         built = _build_pipeline_response(result, start_time, request.include_sources)
 
-        # Cache the generated answer
+        # Cache the generated answer (skip timeout error answers)
         answer = built.get("answer", "")
-        if answer and "Error" not in answer and "rejected" not in answer:
+        if answer and "Error" not in answer and "rejected" not in answer and "timed out" not in answer:
             cache.set(request.query, answer)
 
         # Output PII redaction on the answer
@@ -204,7 +212,7 @@ async def query(request: QueryRequest) -> QueryResponse:
         )
 
     except Exception as e:
-        logger.error("Query processing failed: %s", str(e))
+        logger.error("Query processing failed (req=%s): %s", request_id, str(e))
         error_str = str(e).lower()
         if "all providers failed" in error_str or "no llm" in error_str:
             raise HTTPException(
@@ -275,36 +283,56 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
         result = await query(request)
 
         async def convert_to_stream() -> AsyncGenerator[str, None]:
-            yield f"data: {result.answer}\n\n"
+            _nl = "\n"
+            for line in result.answer.split("\n"):
+                if not line:
+                    yield f"data: {json.dumps({'t': _nl})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'t': line})}\n\n"
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(convert_to_stream(), media_type="text/event-stream")
 
     async def generate_stream() -> AsyncGenerator[str, None]:
+        request_id = str(uuid.uuid4())
         try:
             start_time = time.time()
             pipeline = get_reasoning_pipeline()
-            logger.info("Processing streaming query: %s...", request.query[:100])
+            logger.info("Processing streaming query (req=%s): %s...", request_id, request.query[:100])
 
-            result = pipeline.run(request.query, llm_api_key=request.llm_api_key)
+            query_tracker.start(request_id, request.query)
+            try:
+                result = pipeline.run(request.query, llm_api_key=request.llm_api_key, request_id=request_id)
+            finally:
+                query_tracker.finish(request_id)
+
             built = _build_pipeline_response(result, start_time, True)
             answer = built.pop("answer", "")
 
-            # Stream answer text in word-boundary-aware chunks
-            # Avoids splitting mid-word, preventing word fusion on the frontend
+            # Stream answer text as SSE events, one per line.
+            # Split on \n first so no data: line ever contains a newline —
+            # otherwise the frontend's \n-based SSE parser drops text.
+            # Stream as JSON-wrapped chunks: {"t":"text"}
+            # JSON-escapes \n as \\n so no data: line ever contains a raw
+            # newline — the frontend's \n-based SSE parser stays intact.
             chunk_size = 50
-            start = 0
-            while start < len(answer):
-                if start + chunk_size >= len(answer):
-                    yield f"data: {answer[start:]}\n\n"
-                    break
-                end = start + chunk_size
-                if end < len(answer) and not answer[end].isspace() and end > start:
-                    last_space = answer.rfind(" ", start, end)
-                    if last_space > start:
-                        end = last_space + 1
-                yield f"data: {answer[start:end]}\n\n"
-                start = end
+            _nl = "\n"
+            for line in answer.split("\n"):
+                if not line:
+                    yield f"data: {json.dumps({'t': _nl})}\n\n"
+                    continue
+                start = 0
+                while start < len(line):
+                    if start + chunk_size >= len(line):
+                        yield f"data: {json.dumps({'t': line[start:]})}\n\n"
+                        break
+                    end = start + chunk_size
+                    if end < len(line) and not line[end].isspace() and end > start:
+                        last_space = line.rfind(" ", start, end)
+                        if last_space > start:
+                            end = last_space + 1
+                    yield f"data: {json.dumps({'t': line[start:end]})}\n\n"
+                    start = end
 
             # Send metadata as a single JSON event
             yield f"data: {json.dumps(built)}\n\n"
@@ -324,3 +352,36 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/debug/active_queries")
+async def debug_active_queries() -> dict[str, Any]:
+    """Return all in-flight queries with their ages and current node.
+
+    Useful for diagnosing stuck queries without restarting the server.
+    """
+    active = query_tracker.get_active()
+    stale_ids = query_tracker.get_stale()
+    return {
+        "active_count": query_tracker.active_count(),
+        "active_queries": active,
+        "stale_ids": stale_ids,
+        "hint": "If queries appear stuck, call /debug/clear_query with the request_id",
+    }
+
+
+@router.post("/debug/clear_query")
+async def debug_clear_query(request_id: str) -> dict[str, Any]:
+    """Forcefully remove a query from the in-flight tracker.
+
+    Does NOT stop the underlying pipeline execution — it only removes
+    the tracker entry so a new query can proceed.
+    """
+    existed = query_tracker.force_clear(request_id)
+    if existed:
+        logger.warning("Force-cleared tracker entry for request %s", request_id)
+    return {
+        "cleared": existed,
+        "request_id": request_id,
+        "message": "Tracker entry removed (pipeline thread may still be running)",
+    }

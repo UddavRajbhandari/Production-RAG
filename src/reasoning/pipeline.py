@@ -4,12 +4,16 @@ Constructs and executes the state graph for query reasoning.
 """
 
 import logging
-from typing import cast
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
+from typing import Any, cast
 
 from langgraph.graph import END, StateGraph
 
 from src.api.guardrails.pii_mask import PIIMask
 from src.api.guardrails.token_budget import TokenBudget
+from src.api.query_tracker import query_tracker
 from src.reasoning.nodes.auditor import AuditorNode
 from src.reasoning.nodes.calculation_agent import CalculationAgentNode
 from src.reasoning.nodes.gatekeeper import GatekeeperNode
@@ -21,6 +25,27 @@ from src.reasoning.nodes.summarization_agent import SummarizationAgentNode
 from src.reasoning.state import RAGState
 
 logger = logging.getLogger(__name__)
+
+# Pipeline execution timeout — 3 minutes matches total_p95_ms target
+PIPELINE_TIMEOUT_S = 180
+
+
+def _timeout_error_state(query: str, llm_api_key: str | None, query_tokens: int, pii_redacted: str | None) -> RAGState:
+    return {
+        "query": query,
+        "generated_answer": "The query timed out after 3 minutes. Try rephrasing or simplifying your question.",
+        "sub_tasks": [],
+        "retrieved_context": [],
+        "current_node": "",
+        "validation_passed": False,
+        "error_message": "Pipeline execution timed out",
+        "node_latency_ms": {},
+        "total_latency_ms": 0.0,
+        "llm_api_key": llm_api_key,
+        "pii_redacted_query": pii_redacted,
+        "total_tokens_used": query_tokens,
+        "source_files": [],
+    }
 
 
 class ReasoningPipeline:
@@ -39,18 +64,20 @@ class ReasoningPipeline:
         self.auditor = AuditorNode()
         self.strategist = StrategistNode()
 
+        self._request_id: str | None = None
+
         # Build Graph
         workflow = StateGraph(RAGState)
 
-        # 1. Add Nodes
-        workflow.add_node("planner", self.planner.process)
-        workflow.add_node("router", self.router.process)
-        workflow.add_node("retrieval_agent", self.retriever.process)
-        workflow.add_node("summarization_agent", self.summarizer.process)
-        workflow.add_node("calculation_agent", self.calculator.process)
-        workflow.add_node("gatekeeper", self.gatekeeper.process)
-        workflow.add_node("auditor", self.auditor.process)
-        workflow.add_node("strategist", self.strategist.process)
+        # 1. Add Nodes — wrapped with tracker updates
+        workflow.add_node("planner", cast(Any, self._tracked_node("planner")))
+        workflow.add_node("router", cast(Any, self._tracked_node("router")))
+        workflow.add_node("retrieval_agent", cast(Any, self._tracked_node("retrieval_agent")))
+        workflow.add_node("summarization_agent", cast(Any, self._tracked_node("summarization_agent")))
+        workflow.add_node("calculation_agent", cast(Any, self._tracked_node("calculation_agent")))
+        workflow.add_node("gatekeeper", cast(Any, self._tracked_node("gatekeeper")))
+        workflow.add_node("auditor", cast(Any, self._tracked_node("auditor")))
+        workflow.add_node("strategist", cast(Any, self._tracked_node("strategist")))
 
         # 2. Define Edges
         workflow.set_entry_point("planner")
@@ -77,11 +104,45 @@ class ReasoningPipeline:
 
         self.app = workflow.compile()
 
-    def run(self, query: str, llm_api_key: str | None = None) -> RAGState:
+    def _tracked_node(self, name: str) -> Callable[[RAGState], RAGState]:
+        """Wrap a node function to update the in-flight query tracker."""
+        node_map = {
+            "planner": self.planner.process,
+            "router": self.router.process,
+            "retrieval_agent": self.retriever.process,
+            "summarization_agent": self.summarizer.process,
+            "calculation_agent": self.calculator.process,
+            "gatekeeper": self.gatekeeper.process,
+            "auditor": self.auditor.process,
+            "strategist": self.strategist.process,
+        }
+        fn = node_map[name]
+
+        def wrapper(state: RAGState) -> RAGState:
+            rid = self._request_id
+            if rid:
+                query_tracker.update_node(rid, name)
+            return fn(state)
+
+        return wrapper
+
+    def run(
+        self,
+        query: str,
+        llm_api_key: str | None = None,
+        request_id: str | None = None,
+    ) -> RAGState:
         """Executes the pipeline for a single query.
 
         Applies PII redaction and token budget check before processing.
+        If a timeout occurs, returns an error state instead of hanging indefinitely.
+
+        Args:
+            query: The user query
+            llm_api_key: Optional API key override
+            request_id: Optional ID for in-flight query tracking
         """
+        self._request_id = request_id
         query_tokens = self.token_budget.count_tokens(query)
 
         # Step 1: Token budget check
@@ -128,8 +189,28 @@ class ReasoningPipeline:
         }
 
         query_for_log = pii_redacted or query
-        logger.info("Starting reasoning pipeline for query: %s", query_for_log[:200])
-        result = self.app.invoke(initial_state)
+        logger.info(
+            "Starting reasoning pipeline for query (req=%s): %s",
+            request_id,
+            query_for_log[:200],
+        )
+
+        # Execute with timeout
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(self.app.invoke, initial_state)
+        try:
+            result = future.result(timeout=PIPELINE_TIMEOUT_S)
+        except FuturesTimeout:
+            logger.error(
+                "Pipeline TIMEOUT after %ds for request %s — query: %s",
+                PIPELINE_TIMEOUT_S,
+                request_id,
+                query_for_log[:100],
+            )
+            return _timeout_error_state(query, llm_api_key, query_tokens, pii_redacted)
+        finally:
+            # Don't wait for the thread — it will finish on its own via httpx timeouts
+            executor.shutdown(wait=False)
 
         estimated_total = (
             query_tokens

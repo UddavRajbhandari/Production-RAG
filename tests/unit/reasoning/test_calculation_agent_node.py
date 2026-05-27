@@ -172,10 +172,14 @@ class TestCalculationAgentNode:
             assert "No numerical data" in result["generated_answer"]
 
     def test_process_retrieval_error(self, sample_rag_state: RAGState) -> None:
-        with patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls:
+        with (
+            patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls,
+            patch("src.reasoning.nodes.calculation_agent.CrossEncoderReranker") as mock_rerank_cls,
+        ):
             mock_ret = MagicMock()
             mock_ret.search.side_effect = Exception("Connection error")
             mock_ret_cls.return_value = mock_ret
+            mock_rerank_cls.return_value = MagicMock()
 
             sample_rag_state["query"] = "Total budget?"
             node = CalculationAgentNode()

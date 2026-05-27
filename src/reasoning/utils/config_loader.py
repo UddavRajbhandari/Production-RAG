@@ -41,11 +41,6 @@ class ConfigLoader:
             self._config = yaml.safe_load(f)
 
     @property
-    def model_name(self) -> str:
-        models = self._config.get("models", {})
-        return str(models.get("llm_local", "llama3:8b-instruct-q4_K_M"))
-
-    @property
     def ollama_url(self) -> str:
         return "http://localhost:11434/api/generate"
 

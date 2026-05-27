@@ -289,6 +289,8 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
     latency_ms: number;
     error_message: string | null;
     ragas_scores: RagasScores | null;
+    source_files?: string[];
+    total_tokens_used?: number;
   } | null>(null);
 
   // Refs to avoid stale closures in streaming callbacks
@@ -322,6 +324,7 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
       role: 'assistant',
       content: err ? '' : stripSourceCitations(content),
       sources: meta?.sources || [],
+      source_files: meta?.source_files || [],
       error: err,
       timestamp: Date.now(),
       node_evaluations: meta?.node_evaluations || null,
@@ -329,6 +332,7 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
       latency_ms: meta?.latency_ms ?? 0,
       error_message: meta?.error_message || null,
       ragas_scores: meta?.ragas_scores || null,
+      total_tokens_used: meta?.total_tokens_used || 0,
     };
     const allMessages = [...userMessages, finalMsg];
     onMessagesChange(allMessages);
@@ -378,7 +382,7 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
             ).join('\n\n---\n\n')
           : 'No relevant documents found';
         streamingContentRef.current = content;
-        streamingMetaRef.current = { sources, node_evaluations: null, validation_passed: true, latency_ms: 0, error_message: null, ragas_scores: null };
+        streamingMetaRef.current = { sources, node_evaluations: null, validation_passed: true, latency_ms: 0, error_message: null, ragas_scores: null, source_files: [], total_tokens_used: 0 };
         setStreamingContent(content);
         setStreamingMetadata(streamingMetaRef.current);
         finalizeStream(userMessages, assistantId, content, streamingMetaRef.current);
@@ -422,11 +426,13 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
         role: 'assistant',
         content: streamingContent,
         sources: streamingMetadata?.sources || [],
+        source_files: streamingMetadata?.source_files || [],
         node_evaluations: streamingMetadata?.node_evaluations || null,
         validation_passed: streamingMetadata?.validation_passed ?? undefined,
         latency_ms: streamingMetadata?.latency_ms || undefined,
         error_message: streamingMetadata?.error_message || null,
         ragas_scores: streamingMetadata?.ragas_scores || null,
+        total_tokens_used: streamingMetadata?.total_tokens_used || 0,
         timestamp: Date.now(),
       }
     : null;

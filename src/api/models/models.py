@@ -98,19 +98,46 @@ class QueryRequest(BaseModel):
         return v
 
 
+class SourceModel(BaseModel):
+    """Source document reference in query response."""
+
+    text: str = Field(..., description="Source text content")
+    score: float = Field(..., description="Retrieval relevance score")
+    source: str = Field(..., description="Retrieval method (hybrid/dense/sparse)")
+    source_file: str | None = Field(default=None, description="Source filename")
+    chunk_index: int | None = Field(default=None, description="Chunk position in source")
+
+
+class NodeEvaluationModel(BaseModel):
+    """Per-node evaluation result."""
+
+    node: str = Field(..., description="Node name")
+    latency_ms: float = Field(..., description="Node execution latency")
+    evaluation: str = Field(..., description="passed, failed, or completed")
+
+
+class RagasScoresModel(BaseModel):
+    """RAGAS evaluation scores."""
+
+    context_precision: float = Field(default=0.0, description="Context precision score")
+    answer_relevancy: float = Field(default=0.0, description="Answer relevancy score")
+    answer_completeness: float = Field(default=0.0, description="Answer completeness score")
+    faithfulness: float = Field(default=0.0, description="Faithfulness score")
+
+
 class QueryResponse(BaseModel):
     """Response model for query endpoint."""
 
     answer: str = Field(..., description="Generated answer from RAG pipeline")
-    sources: list[dict] | None = Field(default=None, description="Source documents used")
+    sources: list[SourceModel] | None = Field(default=None, description="Source documents used")
     source_files: list[str] = Field(default_factory=list, description="Unique source filenames cited")
     latency_ms: float = Field(..., description="Total processing latency in milliseconds")
     validation_passed: bool = Field(..., description="Whether response passed validation")
     error_message: str | None = Field(default=None, description="Validation error message from nodes")
-    node_evaluations: list[dict] | None = Field(
+    node_evaluations: list[NodeEvaluationModel] | None = Field(
         default=None, description="Per-node evaluation results from Gatekeeper, Auditor, Strategist"
     )
-    ragas_scores: dict[str, float] | None = Field(
+    ragas_scores: RagasScoresModel | None = Field(
         default=None,
         description="Per-query RAGAS evaluation scores (context_precision, answer_relevancy, "
         "answer_completeness, faithfulness)",

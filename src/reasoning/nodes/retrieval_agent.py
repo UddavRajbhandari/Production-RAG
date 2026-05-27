@@ -37,8 +37,8 @@ class RetrievalAgentNode:
             # 2. Rerank results to prune candidate pool
             reranked_hits = self.reranker.rerank(search_query, hits)
 
-            # 3. Enrich with context window (standard window_size: 1)
-            enriched_hits = self.retriever.expand_context(reranked_hits, window_size=1)
+            # 3. Enrich with context window
+            enriched_hits = self.retriever.expand_context(reranked_hits, window_size=3)
 
             state["retrieved_context"] = enriched_hits
             state["error_message"] = None

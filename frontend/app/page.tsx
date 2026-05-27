@@ -1,21 +1,61 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import UploadPanel from '@/components/UploadPanel';
 import ChatPanel from '@/components/ChatPanel';
 import PastQueries from '@/components/PastQueries';
+import StartupSkeleton from '@/components/StartupSkeleton';
 import { getActiveSession, getSession, createSession, setActiveSession, updateSessionMessages, updateSessionFiles } from '@/lib/storage';
 import type { ChatMessage } from '@/types';
 
 export default function HomePage() {
+  const [backendReady, setBackendReady] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionFiles, setSessionFiles] = useState<{ name: string; timestamp: number }[]>([]);
   const [showLeft, setShowLeft] = useState(true);
+  const healthAttempts = useRef(0);
 
-  // Initialize session on mount
+  // Poll health endpoint until backend is ready
   useEffect(() => {
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const base = process.env.NEXT_PUBLIC_API_URL || '';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(`${base}/api/v1/health/live`, {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'alive') {
+            setBackendReady(true);
+            return;
+          }
+        }
+      } catch {
+        // Backend not ready yet
+      }
+      if (cancelled) return;
+      healthAttempts.current += 1;
+      if (healthAttempts.current < 90) {
+        setTimeout(check, 2000);
+      }
+    };
+
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Initialize session on mount (only after backend is ready)
+  useEffect(() => {
+    if (!backendReady) return;
     let session = getActiveSession();
     if (!session) {
       session = createSession();
@@ -23,7 +63,7 @@ export default function HomePage() {
     setCurrentSessionId(session.id);
     setMessages(session.messages);
     setSessionFiles(session.files);
-  }, []);
+  }, [backendReady]);
 
   const handleSelectSession = useCallback((id: string) => {
     const session = getSession(id);
@@ -63,8 +103,12 @@ export default function HomePage() {
     }
   }, [sessionFiles, currentSessionId]);
 
+  if (!backendReady) {
+    return <StartupSkeleton />;
+  }
+
   return (
-    <div className="min-h-screen bg-background-primary">
+    <div key="app-content" className="min-h-screen animate-fade-in bg-background-primary">
       <Navbar />
       <div className="mx-auto flex max-w-[1600px] pt-13">
         {/* Left Sidebar */}

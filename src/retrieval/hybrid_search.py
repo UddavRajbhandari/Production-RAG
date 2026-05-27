@@ -124,27 +124,36 @@ class HybridRetriever:
 
             neon = NeonStorage()
             node_lookup: dict[tuple[str, int], dict] = {}
+            source_cache: dict[str, list[Any]] = {}
 
+            # Collect unique source files and needed chunk indices
+            needed: dict[str, set[int]] = {}
             for node_dict in nodes:
                 source = node_dict["metadata"].get("source_file")
                 chunk_idx = node_dict["metadata"].get("chunk_index")
                 if source and chunk_idx is not None:
+                    if source not in needed:
+                        needed[source] = set()
                     for i in range(chunk_idx - window_size, chunk_idx + window_size + 1):
-                        if (source, i) not in node_lookup:
-                            try:
-                                chunks = neon.get_chunks_by_source_file(source)
-                                for c in chunks:
-                                    if getattr(c, "chunk_index", None) == i:
-                                        node_lookup[(source, i)] = {
-                                            "text": c.text,
-                                            "metadata": {
-                                                "source_file": c.source_file,
-                                                "chunk_index": getattr(c, "chunk_index", None),
-                                            },
-                                        }
-                            except Exception as e:
-                                logger.warning("Failed to get chunks from Neon: %s", e)
-                                break
+                        needed[source].add(i)
+
+            # Query Neon once per source file
+            for source, indices in needed.items():
+                try:
+                    if source not in source_cache:
+                        source_cache[source] = neon.get_chunks_by_source_file(source)
+                    for c in source_cache[source]:
+                        ci = getattr(c, "chunk_index", None)
+                        if ci in indices:
+                            node_lookup[(source, ci)] = {
+                                "text": c.text,
+                                "metadata": {
+                                    "source_file": c.source_file,
+                                    "chunk_index": ci,
+                                },
+                            }
+                except Exception as e:
+                    logger.warning("Failed to get chunks from Neon for %s: %s", source, e)
 
             return self._do_expand_context(nodes, node_lookup, window_size)
         except Exception as e:

@@ -74,6 +74,8 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
 
+    let hasNewFile = false;
+
     for (const file of files) {
       const formData = new FormData();
       formData.append('file', file);
@@ -101,6 +103,7 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
             : f
         ));
         if (result.status !== 'skipped') {
+          hasNewFile = true;
           onFilesChange([...sessionFiles, { name: file.name, timestamp: Date.now() }]);
         }
       } catch (err) {
@@ -113,6 +116,22 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
     }
 
     setUploading(false);
+
+    // Refresh document list after upload — storage runs in a background
+    // task on the backend, so poll a few times until it completes
+    if (hasNewFile) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          const docs = await getDocuments();
+          setDocuments(docs);
+          setDocsError(null);
+          break;
+        } catch {
+          // backend storage still processing, keep polling
+        }
+      }
+    }
   }, [sessionFiles, onFilesChange]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

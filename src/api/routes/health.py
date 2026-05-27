@@ -2,11 +2,16 @@
 Health check endpoint for monitoring and load balancers.
 
 Reports storage mode (cloud vs local) and component health.
+
+Caches component status with a TTL so frequent polling (e.g. frontend
+startup skeleton) returns instantly without re-creating dependencies.
 """
 
 import concurrent.futures
 import logging
 import os
+import threading
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -49,6 +54,7 @@ def _get_llm_mode() -> str:
 
 
 _HEALTH_CHECK_TIMEOUT = 5  # seconds
+_HEALTH_CACHE_TTL = 30  # seconds — serve cached results within this window
 
 
 def _run_with_timeout(func: Callable[..., tuple[str, str]], timeout: int = _HEALTH_CHECK_TIMEOUT) -> tuple[str, str]:
@@ -56,6 +62,69 @@ def _run_with_timeout(func: Callable[..., tuple[str, str]], timeout: int = _HEAL
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(func)
         return future.result(timeout=timeout)
+
+
+# Cached health check state + lock to prevent stampede on TTL expiry
+_health_cache_lock = threading.Lock()
+_last_check_time: float = 0.0
+_cached_components: dict[str, Any] | None = None
+_cached_status: str = "starting"
+
+
+def _run_health_checks() -> tuple[str, dict[str, Any]]:
+    """Run all health checks and return (status, components)."""
+    storage_mode = _get_storage_mode()
+
+    qdrant_status, qdrant_msg = _check_qdrant()
+    bm25_status, bm25_msg = _check_bm25()
+    postgres_status, postgres_msg = _check_postgres()
+    llm_status, llm_msg = _check_llm()
+    auth_info = _check_auth()
+
+    components: dict[str, str | dict] = {
+        "api": "healthy",
+        "qdrant": qdrant_status,
+        "bm25": bm25_status,
+        "postgres": postgres_status,
+        "llm": llm_status,
+        "auth": auth_info,
+        "storage_mode": f"{storage_mode['qdrant_mode']}/{storage_mode['postgres_mode']}",
+    }
+
+    health_components = {k: v for k, v in components.items() if k != "storage_mode"}
+    all_healthy = all(
+        isinstance(v, str)
+        and (v == "healthy" or v == "degraded" or v.startswith("healthy:") or v.startswith("degraded:"))
+        for v in health_components.values()
+    )
+
+    status = "healthy" if all_healthy else "degraded"
+
+    return status, {
+        "api": "healthy",
+        "qdrant": f"{qdrant_status}: {qdrant_msg}",
+        "bm25": f"{bm25_status}: {bm25_msg}",
+        "postgres": f"{postgres_status}: {postgres_msg}",
+        "llm": f"{llm_status}: {llm_msg}",
+        "llm_mode": _get_llm_mode(),
+        "storage_mode": storage_mode,
+    }
+
+
+def get_cached_health() -> tuple[str, dict[str, Any]]:
+    """Return cached health status, refreshing every _HEALTH_CACHE_TTL seconds."""
+    global _last_check_time, _cached_status, _cached_components
+    now = time.time()
+    if _cached_components and (now - _last_check_time) <= _HEALTH_CACHE_TTL:
+        return _cached_status, _cached_components
+
+    with _health_cache_lock:
+        # Double-check after acquiring lock
+        if _cached_components and (now - _last_check_time) <= _HEALTH_CACHE_TTL:
+            return _cached_status, _cached_components
+        _cached_status, _cached_components = _run_health_checks()
+        _last_check_time = now
+    return _cached_status, _cached_components
 
 
 def _check_qdrant() -> tuple[str, str]:
@@ -172,45 +241,16 @@ async def health_check() -> HealthResponse:
     Health check endpoint.
 
     Returns service status, storage mode, and component health.
-    Used by load balancers and monitoring systems.
+    Results are cached for 30s to handle frequent polling.
+
+    Use /health/live for a lightweight server-alive check.
     """
-    storage_mode = _get_storage_mode()
-
-    qdrant_status, qdrant_msg = _check_qdrant()
-    bm25_status, bm25_msg = _check_bm25()
-    postgres_status, postgres_msg = _check_postgres()
-    llm_status, llm_msg = _check_llm()
-    auth_info = _check_auth()
-
-    components: dict[str, str | dict] = {
-        "api": "healthy",
-        "qdrant": qdrant_status,
-        "bm25": bm25_status,
-        "postgres": postgres_status,
-        "llm": llm_status,
-        "auth": auth_info,
-        "storage_mode": f"{storage_mode['qdrant_mode']}/{storage_mode['postgres_mode']}",
-    }
-
-    health_components = {k: v for k, v in components.items() if k != "storage_mode"}
-    all_healthy = all(
-        isinstance(v, str)
-        and (v == "healthy" or v == "degraded" or v.startswith("healthy:") or v.startswith("degraded:"))
-        for v in health_components.values()
-    )
+    status, components = get_cached_health()
 
     return HealthResponse(
-        status="healthy" if all_healthy else "degraded",
+        status=status,
         version="1.0.0",
-        components={
-            "api": "healthy",
-            "qdrant": f"{qdrant_status}: {qdrant_msg}",
-            "bm25": f"{bm25_status}: {bm25_msg}",
-            "postgres": f"{postgres_status}: {postgres_msg}",
-            "llm": f"{llm_status}: {llm_msg}",
-            "llm_mode": _get_llm_mode(),
-            "storage_mode": storage_mode,
-        },
+        components=components,
     )
 
 

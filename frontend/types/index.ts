@@ -10,7 +10,8 @@ export interface Source {
   text: string;
   score: number;
   source: string;
-  metadata?: Record<string, unknown>;
+  source_file?: string;
+  chunk_index?: number;
 }
 
 export interface NodeEvaluation {
@@ -29,11 +30,13 @@ export interface RagasScores {
 export interface QueryResponse {
   answer: string;
   sources: Source[] | null;
+  source_files?: string[];
   latency_ms: number;
   validation_passed: boolean;
   error_message?: string | null;
   node_evaluations?: NodeEvaluation[] | null;
   ragas_scores?: RagasScores | null;
+  total_tokens_used?: number;
 }
 
 export interface SSEChunk {
@@ -43,7 +46,8 @@ export interface SSEChunk {
 }
 
 export interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'offline';
+  status: string;
+  version: string;
   components: {
     api: string;
     qdrant: string;
@@ -75,6 +79,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   sources?: Source[];
+  source_files?: string[];
   error?: string;
   timestamp: number;
   node_evaluations?: NodeEvaluation[] | null;
@@ -82,6 +87,7 @@ export interface ChatMessage {
   latency_ms?: number;
   error_message?: string | null;
   ragas_scores?: RagasScores | null;
+  total_tokens_used?: number;
 }
 
 export interface DocumentInfo {

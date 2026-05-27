@@ -195,7 +195,7 @@ class CalculationAgentNode:
         try:
             hits = self.retriever.search(search_query)
             reranked = self.reranker.rerank(search_query, hits)
-            enriched = self.retriever.expand_context(reranked, window_size=1)
+            enriched = self.retriever.expand_context(reranked, window_size=3)
             state["retrieved_context"] = enriched
             state["error_message"] = None
         except Exception as e:

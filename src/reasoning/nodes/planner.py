@@ -17,7 +17,6 @@ class PlannerNode:
 
     def __init__(self, config_path: str = "config/settings.yaml") -> None:
         self.llm_client = LLMClient(config_path, max_retries=2, timeout=180)
-        self.model_name = self.llm_client.config.model_name
         self.prompt_template = """
 You are a task planner for a RAG system. Your goal is to take a complex user query
 and break it down into a list of 1-3 distinct, actionable sub-tasks.

@@ -36,8 +36,8 @@ Detects and redacts 5 PII types using regex:
 | IP Address | `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}` | `[REDACTED_IP]` |
 
 ### Integration
-- **Input**: `src/reasoning/pipeline.py:107-111` — PII redacted before entering LLM
-- **Output**: `src/api/routes/query.py:183-186` — PII redacted from final answer
+- **Input**: `src/reasoning/pipeline.py:106-112` — PII redacted before entering LLM
+- **Output**: `src/api/routes/query.py:188-192` — PII redacted from final answer
 
 ### Scoring
 Each PII type has a weight. `is_sensitive()` returns True if the total score ≥ threshold
@@ -71,7 +71,7 @@ similar queries. Avoids redundant LLM calls.
 5. LRU eviction when max_size exceeded
 
 ### Integration
-`src/api/routes/query.py:153-167` — checked before pipeline, stored after.
+`src/api/routes/query.py:159-167` — checked before pipeline; `query.py:183-186` — stored after.
 
 ### Tests
 `tests/unit/guardrails/test_semantic_cache.py` — 11 tests covering hits, misses,
@@ -95,7 +95,7 @@ queries that would consume too many.
 
 ### Integration
 - `src/reasoning/pipeline.py:88-100` — pre-check rejects queries exceeding limit
-- `src/reasoning/pipeline.py:117-121` — post-run total estimation logged in response
+- `src/reasoning/pipeline.py:134-139` — post-run total estimation logged in response
 
 ### Tests
 `tests/unit/guardrails/test_token_budget.py` — 10 tests covering counting, limits,

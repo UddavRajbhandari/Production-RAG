@@ -47,6 +47,8 @@ export async function queryStream(
     latency_ms: number;
     error_message: string | null;
     ragas_scores: RagasScores | null;
+    source_files?: string[];
+    total_tokens_used?: number;
   }) => void,
   onDone: () => void,
   onError: (error: string) => void
@@ -103,6 +105,10 @@ export async function queryStream(
               onError((parsed.message as string) || (parsed.error as string));
               return;
             }
+            if ('t' in parsed && typeof parsed.t === 'string') {
+              onChunk(parsed.t);
+              continue;
+            }
             if ('sources' in parsed || 'node_evaluations' in parsed) {
               onMetadata(parsed as {
                 sources: Source[] | null;
@@ -111,6 +117,8 @@ export async function queryStream(
                 latency_ms: number;
                 error_message: string | null;
                 ragas_scores: RagasScores | null;
+                source_files?: string[];
+                total_tokens_used?: number;
               });
               continue;
             }

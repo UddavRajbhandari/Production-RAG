@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query, queryStream } from '@/lib/api-server';
+import { queryStream } from '@/lib/api-server';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { query: string; stream?: boolean; include_sources?: boolean; llm_api_key?: string | null };
+    const body = await req.json() as { query: string; stream?: boolean; include_sources?: boolean; llm_api_key?: string | null; source_files?: string[] };
     const isStreaming = body.stream === true;
 
     if (isStreaming) {
@@ -34,11 +34,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const result = await query(body);
+    const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || '',
+      },
+      body: JSON.stringify(body),
+    });
+    const result = await backendRes.json();
+    if (!backendRes.ok) {
+      const detail = result?.detail as Record<string, unknown> | undefined;
+      const msg = (detail?.message as string) || (detail?.error as string) || (result?.message as string) || (result?.error as string) || `HTTP ${backendRes.status}`;
+      return NextResponse.json({ error: msg }, { status: backendRes.status });
+    }
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error';
-    const status = message.includes('401') ? 401 : message.includes('503') ? 503 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

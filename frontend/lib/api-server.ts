@@ -86,13 +86,17 @@ export async function queryStream(
 
         if (data.startsWith('{')) {
           try {
-            const parsed = JSON.parse(data) as { error?: string; message?: string };
+            const parsed = JSON.parse(data) as Record<string, unknown>;
             if (parsed.error) {
-              onError(parsed.message || parsed.error);
+              onError((parsed.message as string) || (parsed.error as string));
               return;
             }
+            if ('t' in parsed && typeof parsed.t === 'string') {
+              onChunk(parsed.t);
+              continue;
+            }
           } catch {
-            // Not JSON, treat as text
+            // Not JSON, treat as text chunk
           }
         }
 
