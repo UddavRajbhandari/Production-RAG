@@ -1,42 +1,39 @@
-# Production RAG Pipeline - Dockerfile
-# Phase 8: Deployment Configuration
+# Production RAG Backend — Hugging Face Spaces Dockerfile
+# CPU-only torch for memory efficiency on HF's free tier
 
-# ─── Stage 1: Build Frontend ────────────────────────────────────────────────
-FROM node:18-alpine AS frontend-builder
-
-WORKDIR /frontend
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
-COPY frontend/ .
-RUN npm run build
-
-# ─── Stage 2: Python Backend + Static Frontend ──────────────────────────────
 FROM python:3.10-slim
 
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV SENTENCE_TRANSFORMERS_HOME=/app/storage/models
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# CPU torch first (avoids downloading 2GB GPU wheel from PyPI).
+# Downloading the direct CPU wheel URL avoids the +cpu local version
+# mismatch that makes torch==2.11.0 resolve to the GPU wheel on PyPI.
+# sentence-transformers and transformers will see it's already installed.
+RUN pip install --no-cache-dir --timeout=120 \
+    https://download.pytorch.org/whl/cpu/torch-2.11.0%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl
 
-# Install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
-COPY --from=frontend-builder /frontend/out/ /app/frontend/out/
+# Backend source
+COPY src/ ./src/
+COPY config/ ./config/
 
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Pre-downloaded ONNX reranker — avoids 30s download at boot
+COPY storage/reranker_onnx/ ./storage/reranker_onnx/
 
-EXPOSE 8000
+# Sentence-transformers model cache — empty dir, populated at runtime
+RUN mkdir -p /app/storage/models
 
-ENTRYPOINT ["/entrypoint.sh"]
+EXPOSE 7860
+
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "7860"]

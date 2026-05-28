@@ -33,5 +33,4 @@ numpy==2.2.6
 # Embeddings & Inference
 sentence-transformers==5.4.1
 transformers==5.7.0
-torch==2.11.0
 qdrant-client==1.17.1
