@@ -1,9 +1,6 @@
-# Docker Ignore File
-# Exclude files from Docker build context to speed up builds and reduce image size
-
 # Git
 .git
-.github
+.gitattributes
 .gitignore
 
 # Python
@@ -11,43 +8,47 @@ __pycache__
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-.venv/
-venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+*.egg-info
+.venv
+venv
+env
 
-# Project Specific
-data/
-storage/
-docs/
-scripts/
-tests/
-graphify-out/
-node_modules/
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-*.json
+# CI / cache
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.graphify_cache
+.mypy
+graphify-out
+
+# Tests — not needed at runtime
+tests
+
+# Documentation — not needed at runtime
+docs
 *.md
-!requirements.txt
-!pyproject.toml
-!frontend/package.json
-!frontend/package-lock.json
-!frontend/tsconfig.json
-!frontend/next.config.*
-!frontend/.eslintrc.*
+AGENTS.md
+CLAUDE.md
+
+# Data files — large, not needed in container
+data
+
+# Local databases — regenerated from cloud at runtime
+storage/*.db
+storage/*.pkl
+storage/metadata*
+storage/bm25*
+storage/qdrant_local*
+
+# Environment files — secrets
+.env
+.env.local
+.env.*
+
+# Frontend — built separately by Vercel
+frontend/node_modules
+frontend/.next
+frontend/out
 
 # OS
 .DS_Store
