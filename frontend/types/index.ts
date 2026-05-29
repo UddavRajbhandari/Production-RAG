@@ -55,6 +55,7 @@ export interface HealthStatus {
     postgres: string;
     llm: string;
     llm_mode: string;
+    llm_provider: string;
     storage_mode: {
       qdrant_mode: string;
       postgres_mode: string;

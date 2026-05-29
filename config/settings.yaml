@@ -108,7 +108,7 @@ llm:
       model: meta-llama/llama-3.1-8b-instruct
       timeout: 60
       type: api
-  provider: auto # auto, groq, openai, openrouter, or ollama
+  provider: openrouter # auto, groq, openai, openrouter, or ollama
 logging:
   format: json
   level: INFO

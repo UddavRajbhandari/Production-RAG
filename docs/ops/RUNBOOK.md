@@ -10,10 +10,10 @@ docker-compose up -d qdrant
 curl http://localhost:6333/health
 
 # 3. Start the API
-python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 7860
 
 # 4. Verify API is healthy
-curl http://localhost:8000/api/v1/health
+curl http://localhost:7860/api/v1/health
 
 # 5. Start the frontend (if running locally)
 cd frontend && npm run dev

@@ -39,6 +39,18 @@ def _get_storage_mode() -> dict:
     }
 
 
+def _get_llm_provider() -> str:
+    """Read the configured LLM provider from settings.yaml."""
+    try:
+        from src.reasoning.utils.config_loader import ConfigLoader
+
+        config = ConfigLoader("config/settings.yaml")
+        provider = str(config.get("llm.provider", "auto"))
+        return provider
+    except Exception:
+        return "unknown"
+
+
 def _get_llm_mode() -> str:
     """Detect which LLM mode is active based on available keys."""
     keys = {
@@ -107,6 +119,7 @@ def _run_health_checks() -> tuple[str, dict[str, Any]]:
         "postgres": f"{postgres_status}: {postgres_msg}",
         "llm": f"{llm_status}: {llm_msg}",
         "llm_mode": _get_llm_mode(),
+        "llm_provider": _get_llm_provider(),
         "storage_mode": storage_mode,
     }
 

@@ -50,8 +50,10 @@ export default function SettingsPage() {
   }, []);
 
   const llmMode = health?.components?.llm_mode || 'none';
+  const llmProvider = health?.components?.llm_provider || 'unknown';
   const isLlmActive = llmMode !== 'none';
   const userHasKey = typeof window !== 'undefined' && Boolean(localStorage.getItem('openrouter_api_key'));
+  const providerLabel = userHasKey ? 'openrouter (user key)' : (isLlmActive ? llmMode : 'none');
   const effectiveLlmMode = isLlmActive ? llmMode : userHasKey ? 'user-provided' : 'none';
   const isEffectiveLlmActive = isLlmActive || userHasKey;
 
@@ -193,15 +195,21 @@ export default function SettingsPage() {
               <div className="space-y-1.5 rounded-input border border-border bg-background-surface p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Provider Chain</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">Primary</span>
-                  <span className={`text-xs font-medium ${userHasKey ? 'text-accent-primary' : 'text-text-muted'}`}>
-                    OpenRouter {userHasKey ? '(key set)' : '(no key)'}
+                  <span className="text-xs text-text-muted">Configured</span>
+                  <span className="text-xs font-medium text-accent-primary">
+                    {llmProvider === 'auto' ? 'auto-detect' : llmProvider}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">Fallback</span>
+                  <span className="text-xs text-text-muted">Active</span>
+                  <span className={`text-xs font-medium ${isEffectiveLlmActive ? 'text-accent-primary' : 'text-text-muted'}`}>
+                    {providerLabel}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Env Keys Found</span>
                   <span className={`text-xs font-medium ${isLlmActive ? 'text-accent-primary' : 'text-text-muted'}`}>
-                    Ollama {isLlmActive ? '(available)' : '(unavailable)'}
+                    {llmMode}
                   </span>
                 </div>
               </div>

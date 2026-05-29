@@ -120,9 +120,9 @@ class LLMClient:
         if requested_provider == "auto":
             # Priority-based auto-detection (skip disabled/working profiles)
             priority_list = [
-                "groq",
-                "openai",
                 "openrouter",
+                "openai",
+                "groq",
             ]  # HuggingFace disabled for now
             for profile_name in priority_list:
                 profile = profiles.get(profile_name)
@@ -208,16 +208,26 @@ class LLMClient:
         llm_api_key: str | None = None,
     ) -> LLMResponse:
         """Generates a response with automatic fallback between providers."""
-        # User-provided key takes priority — use it directly
+        # User-provided key takes priority — send to OpenRouter endpoint
         if llm_api_key:
             try:
-                result = self._api_client.generate(
-                    prompt,
-                    format_json,
-                    temperature,
-                    custom_model,
-                    api_key_override=llm_api_key,
+                profiles = cast(dict[str, Any], self.config.get("llm.profiles", {}))
+                openrouter_profile = profiles.get("openrouter", {})
+                if not openrouter_profile:
+                    raise ValueError("OpenRouter profile not found in config")
+                from src.reasoning.utils.api_llm_client import (
+                    APIConfig,
+                    APILLMClient,
                 )
+
+                or_config = APIConfig(
+                    endpoint=openrouter_profile.get("endpoint", ""),
+                    api_key=llm_api_key,
+                    model=openrouter_profile.get("model", ""),
+                    timeout=openrouter_profile.get("timeout", self.timeout),
+                )
+                api_client = APILLMClient(or_config)
+                result = api_client.generate(prompt, format_json, temperature, custom_model)
                 if result["success"]:
                     return LLMResponse(
                         text=result["text"],
@@ -234,7 +244,7 @@ class LLMClient:
                     error=result.get("error", "Generation failed"),
                 )
             except Exception as e:
-                logger.error("User-provided LLM key failed: %s", str(e))
+                logger.error("User-provided OpenRouter key failed: %s", str(e))
                 return LLMResponse(
                     text="",
                     raw_response={},
