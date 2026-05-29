@@ -59,6 +59,7 @@ from src.api.limiter import limiter  # noqa: E402
 _log_load("limiter imported")
 
 from src.api.middleware.auth import verify_api_key  # noqa: E402
+from src.api.middleware.body_cache import BodyCacheMiddleware  # noqa: E402
 from src.api.middleware.logging import LoggingMiddleware  # noqa: E402
 from src.api.middleware.metrics import MetricsMiddleware  # noqa: E402
 
@@ -233,6 +234,11 @@ app.add_middleware(
 )
 
 app.add_middleware(MetricsMiddleware)
+
+# BodyCacheMiddleware must be outermost so it reads the raw ASGI stream
+# before Starlette's BaseHTTPMiddleware chain can consume it,
+# preventing 'input: None' in Pydantic validation.
+app.add_middleware(BodyCacheMiddleware)
 
 _log_load("middleware added")
 
