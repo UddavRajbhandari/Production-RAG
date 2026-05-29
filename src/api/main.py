@@ -38,7 +38,9 @@ logging.basicConfig(
 )
 _log_load("logging.basicConfig done")
 
-from fastapi import Depends, FastAPI  # noqa: E402
+from fastapi import Depends, FastAPI, Request  # noqa: E402
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 
 _log_load("fastapi imported")
 
@@ -201,6 +203,13 @@ app = FastAPI(
 _log_load("FastAPI() created")
 
 _register_routes(app)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Log Pydantic validation errors for debugging."""
+    logger.error("Validation error on %s %s: %s", request.method, request.url.path, exc.errors())
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 @app.get("/")

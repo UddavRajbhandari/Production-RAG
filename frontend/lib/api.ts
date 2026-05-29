@@ -9,19 +9,28 @@ function getHeaders(): HeadersInit {
   };
 }
 
+function extractErrorMessage(errorData: Record<string, unknown>): string {
+  const detail = errorData.detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as Record<string, unknown>;
+    if (typeof first.msg === 'string') return first.msg;
+  }
+  if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+    const d = detail as Record<string, unknown>;
+    if (typeof d.message === 'string') return d.message;
+    if (typeof d.error === 'string') return d.error;
+  }
+  if (typeof errorData.message === 'string') return errorData.message;
+  if (typeof errorData.error === 'string') return errorData.error;
+  return `HTTP ${(errorData as { status?: number }).status || ''}`;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       const errorData = (await response.json()) as Record<string, unknown>;
-      const detail = errorData.detail as Record<string, unknown> | undefined;
-      throw new Error(
-        (detail?.message as string) ||
-        (detail?.error as string) ||
-        (errorData.message as string) ||
-        (errorData.error as string) ||
-        `HTTP ${response.status}`
-      );
+      throw new Error(extractErrorMessage(errorData));
     }
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
@@ -61,14 +70,7 @@ export async function queryStream(
 
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    const detail = errorData.detail as Record<string, unknown> | undefined;
-    onError(
-      (detail?.message as string) ||
-      (detail?.error as string) ||
-      (errorData.message as string) ||
-      (errorData.error as string) ||
-      `HTTP ${response.status}`
-    );
+    onError(extractErrorMessage(errorData));
     return;
   }
 
