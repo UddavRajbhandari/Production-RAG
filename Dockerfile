@@ -28,8 +28,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY config/ ./config/
 
-# Pre-downloaded ONNX reranker — avoids 30s download at boot
-COPY storage/reranker_onnx/ ./storage/reranker_onnx/
+# ONNX reranker downloads at runtime (~90MB, ~30s on first start)
 
 # Sentence-transformers model cache — empty dir, populated at runtime
 RUN mkdir -p /app/storage/models
