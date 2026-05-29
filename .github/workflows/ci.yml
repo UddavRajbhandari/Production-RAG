@@ -67,7 +67,7 @@ jobs:
           python src/evaluation/validate_ground_truth.py data/ground_truth/ground_truth.json
 
       - name: Run Unit Tests
-        run: pytest tests/unit -v --ignore=tests/integration
+        run: python -m pytest tests/unit -v --ignore=tests/integration
 
   # ── Job 3: RAGAS Regression Guard ────────────────────────────────────────────
   # Runs evaluation on a subset of golden QA pairs.
