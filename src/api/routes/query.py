@@ -2,8 +2,6 @@
 Query endpoint for RAG pipeline interactions.
 """
 
-from __future__ import annotations
-
 import json
 import logging
 import time
@@ -55,7 +53,7 @@ def get_semantic_cache() -> SemanticCache:
     return _semantic_cache
 
 
-def get_hybrid_retriever() -> HybridRetriever:
+def get_hybrid_retriever() -> "HybridRetriever":
     """Lazy-load the hybrid retriever."""
     global _hybrid_retriever
     if _hybrid_retriever is None:
@@ -66,7 +64,7 @@ def get_hybrid_retriever() -> HybridRetriever:
     return _hybrid_retriever
 
 
-def get_reasoning_pipeline() -> ReasoningPipeline:
+def get_reasoning_pipeline() -> "ReasoningPipeline":
     """Lazy-load the reasoning pipeline."""
     global _reasoning_pipeline
     if _reasoning_pipeline is None:
