@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from src.api.guardrails.pii_mask import PIIMask
 from src.api.guardrails.semantic_cache import SemanticCache
+from src.api.limiter import limiter
 from src.api.middleware.metrics import update_ragas_metrics
 from src.api.models import QueryRequest, QueryResponse
 from src.api.query_tracker import query_tracker
@@ -143,6 +144,7 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
 
 
 @router.post("/query", response_model=QueryResponse)
+@limiter.exempt
 async def query(request: QueryRequest) -> QueryResponse:
     """Submit a query to the RAG pipeline.
 
@@ -155,6 +157,29 @@ async def query(request: QueryRequest) -> QueryResponse:
     - Token budget (reject overly long queries)
     - Prompt injection hardening (in system prompts)
     """
+    # Concurrent query gate — strict limit for system key, safety cap for user key
+    active = query_tracker.active_count()
+    if request.llm_api_key:
+        if active >= 10:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "server_overloaded",
+                    "message": "Server overloaded (10 concurrent queries max). Try again shortly.",
+                    "solution": "Wait a moment and retry your query.",
+                },
+            )
+    elif active >= 3:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "too_many_concurrent",
+                "message": "System at capacity (3 concurrent queries max). "
+                "Provide your own OpenRouter API key in Settings to bypass.",
+                "solution": "Add your OpenRouter key in Settings, or wait for an in-progress query to finish.",
+            },
+        )
+
     request_id = str(uuid.uuid4())
     start_time = time.time()
 
@@ -266,6 +291,7 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
 
 
 @router.post("/query/stream")
+@limiter.exempt
 async def query_stream(request: QueryRequest) -> StreamingResponse:
     """Submit a query with streaming response.
 
@@ -279,6 +305,29 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
       data: <JSON metadata with sources, evaluations, etc.>
       data: [DONE]
     """
+    # Concurrent query gate — strict limit for system key, safety cap for user key
+    active = query_tracker.active_count()
+    if request.llm_api_key:
+        if active >= 10:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "server_overloaded",
+                    "message": "Server overloaded (10 concurrent queries max). Try again shortly.",
+                    "solution": "Wait a moment and retry your query.",
+                },
+            )
+    elif active >= 3:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "too_many_concurrent",
+                "message": "System at capacity (3 concurrent queries max). "
+                "Provide your own OpenRouter API key in Settings to bypass.",
+                "solution": "Add your OpenRouter key in Settings, or wait for an in-progress query to finish.",
+            },
+        )
+
     if not request.stream:
         result = await query(request)
 

@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     require_api_key: bool = Field(default=True, alias="REQUIRE_API_KEY")
 
     # Rate Limiting
-    rate_limit_per_minute: int = Field(default=10, alias="RATE_LIMIT_PER_MINUTE")
+    rate_limit_per_minute: int = Field(default=3, alias="RATE_LIMIT_PER_MINUTE")
 
     # LLM Configuration
     llm_provider: str = Field(default="openrouter", alias="LLM_PROVIDER")

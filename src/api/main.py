@@ -46,17 +46,19 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 _log_load("cors imported")
 
-from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
+from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 _log_load("slowapi imported")
 
+from src.api.limiter import limiter  # noqa: E402
+
+_log_load("limiter imported")
+
 from src.api.middleware.auth import verify_api_key  # noqa: E402
 from src.api.middleware.logging import LoggingMiddleware  # noqa: E402
 from src.api.middleware.metrics import MetricsMiddleware  # noqa: E402
-from src.api.middleware.rate_limit import get_rate_limit_key  # noqa: E402
-from src.api.models.models import settings  # noqa: E402
 
 _log_load("local middleware + models imported")
 
@@ -78,13 +80,6 @@ class HealthCheckFilter(logging.Filter):
 
 
 logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
-
-limiter = Limiter(
-    key_func=get_rate_limit_key,
-    default_limits=[f"{settings.rate_limit_per_minute}/minute"],
-)
-
-_log_load("Limiter() done")
 
 logger = logging.getLogger(__name__)
 _log_load("logger created")
