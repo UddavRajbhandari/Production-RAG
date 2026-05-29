@@ -39,7 +39,13 @@ class BodyCacheMiddleware:
             body += chunk
             more_body = message.get("more_body", False)
 
+        body_consumed = False
+
         async def cached_receive() -> dict:
-            return {"type": "http.request", "body": body, "more_body": False}
+            nonlocal body_consumed
+            if not body_consumed:
+                body_consumed = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return await receive()
 
         await self.app(scope, cached_receive, send)
