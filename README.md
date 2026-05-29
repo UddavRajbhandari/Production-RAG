@@ -1,3 +1,12 @@
+---
+title: Production RAG Pipeline
+emoji: 🧠
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Production RAG Pipeline
 
 <p align="center">
@@ -12,6 +21,7 @@
   <img src="https://img.shields.io/badge/ui-React%2018-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/styling-Tailwind%20CSS%203-06B6D4?logo=tailwindcss" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/deploy-Docker-2496ED?logo=docker" alt="Docker">
+  <img src="https://img.shields.io/badge/monitoring-Prometheus-E6522C?logo=prometheus" alt="Prometheus">
   <img src="https://img.shields.io/badge/CI-CD-208A00?logo=githubactions" alt="CI/CD">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
 </p>
@@ -31,6 +41,7 @@ A production-grade Retrieval-Augmented Generation pipeline featuring a LangGraph
   - [Evaluation](#5-evaluation-srcevaluation)
   - [API Server](#6-api-server-srcapi)
   - [Guardrails](#7-guardrails-srcapiguardrails)
+  - [Stress Testing](#8-stress-testing-srcstress_testing)
 - [Frontend](#frontend)
 - [Project Structure](#project-structure)
 - [Quick Start Guide](#quick-start-guide)
@@ -201,6 +212,19 @@ Four operational guardrails applied at API and pipeline entry points:
 | **Token Budget** | `token_budget.py` | Enforces per-query (2,000 tokens) and total (30,000 tokens) limits using tiktoken (cl100k_base). Rejects queries that would exceed budget before any LLM call |
 | **Prompt Injection Hardening** | _(injected via system prompts)_ | Security instruction appended to all LLM system prompts. Prevents system prompt leakage, role-playing attacks, and instruction override attempts |
 
+### 8. Stress Testing (`src/stress_testing/`)
+
+Adversarial evaluation suite that probes the reasoning engine for security and robustness failures.
+
+| Component | File | Role |
+|---|---|---|
+| **Runner** | `runner.py` | Orchestrates test campaigns with configurable concurrency, supports simulation mode (no API cost) and live mode (against real LLM) |
+| **Prompt Injection** | `tests/prompt_injection.json` | 10+ attack patterns: system prompt override, role-playing, denial of service, instruction leakage, hypothetical scenarios |
+| **Information Evasion** | `tests/information_evasion.json` | Tests that attempt to extract sensitive data, bypass citation requirements, or coerce the model into revealing its instructions |
+| **Bias Probing** | `tests/bias_probing.json` | Evaluates the system for demographic, socioeconomic, and other bias patterns in responses |
+
+Run with: `python src/stress_testing/runner.py --verbose` (simulation) or `python src/stress_testing/runner.py --live --verbose` (requires LLM service).
+
 ---
 
 ## Frontend
@@ -349,6 +373,8 @@ frontend/
     ├── frontend-deploy.yml          ← Frontend deployment
     └── sync-to-hf.yml               ← Hugging Face Spaces sync
 ```
+
+**Quality assurance**: Pre-commit hooks (`.pre-commit-config.yaml`) enforce no trailing whitespace, no debug statements, valid YAML/TOML, secrets scanning (`.secrets.baseline` via detect-secrets), and ground truth JSON schema validation on every commit.
 
 ---
 
@@ -502,6 +528,76 @@ Central configuration in `config/settings.yaml` controls all major subsystems:
 - `API_KEY` — API authentication key
 - `RATE_LIMIT_PER_MINUTE` — Global rate limit (default: 3)
 - `LLM_PROVIDER` — Explicit provider override
+
+---
+
+## Monitoring
+
+### Prometheus Metrics
+
+A `/metrics` endpoint (`src/api/middleware/metrics.py`) exposes Prometheus-formatted metrics for production observability. Accessible at `GET /api/v1/metrics`.
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `rag_query_total` | Counter | `status` | Total queries processed |
+| `rag_query_duration_seconds` | Histogram | — | Request latency (buckets: 0.1s to 180s) |
+| `rag_query_tokens_total` | Counter | — | Total LLM tokens consumed |
+| `rag_active_queries` | Gauge | — | Currently in-flight queries |
+| `rag_ragas_faithfulness` | Gauge | — | Latest RAGAS faithfulness score |
+| `rag_ragas_answer_relevancy` | Gauge | — | Latest RAGAS answer relevancy score |
+| `rag_ragas_context_precision` | Gauge | — | Latest RAGAS context precision score |
+
+### Health Endpoints
+
+| Endpoint | Cache | Purpose |
+|---|---|---|
+| `GET /api/v1/health/live` | None | Lightweight liveness probe — returns immediately |
+| `GET /api/v1/health` | 30s | Full component health (Qdrant, BM25, Postgres, LLM, auth) |
+| `GET /api/v1/health/ready` | None | Readiness check for Kubernetes-style deployments |
+
+### Structured Logging
+
+All API requests are logged as JSON via `LoggingMiddleware` with fields:
+`event`, `request_id`, `method`, `url`, `status_code`, `duration_s`, `client_ip`
+
+### In-Flight Query Tracking
+
+`QueryTracker` (`src/api/query_tracker.py`) monitors all active queries with:
+- Per-query start time and current graph node
+- Stale detection (queries exceeding 5-minute threshold)
+- Debug endpoints: `POST /api/v1/debug/active_queries` and `POST /api/v1/debug/clear_query`
+
+### Rate Limiting
+
+Rate limiting is implemented via **SlowAPI** middleware with two tiers:
+
+| Scenario | Limit | Mechanism |
+|---|---|---|
+| Requests using the system's env API key | 3 concurrent queries max | Concurrent gate in `query.py` using `QueryTracker.active_count()` |
+| Requests with a user-provided API key | 10 concurrent queries max (server safety cap) | Same gate, higher threshold when `llm_api_key` is present |
+| Non-query endpoints (health, metadata) | 3 requests per minute per API key | SlowAPI global `Limiter` with per-key bucketing |
+
+The rate limit key function (`src/api/middleware/rate_limit.py`) uses the `X-API-Key` header when available, falling back to the client IP address. Query routes are exempted from SlowAPI's global limit and rely on the concurrent gate instead, ensuring user-key requests aren't artificially restricted.
+
+### Authentication
+
+API authentication is handled via `X-API-Key` header verification (`src/api/middleware/auth.py`):
+
+- **Header**: `X-API-Key: <key>` sent with every request
+- **Scope**: Required for all endpoints except `/health/live`, `/health`, and `/`
+- **Key format**: Supports multiple comma-separated values via the `API_KEY` environment variable
+- **Verification**: Provided key is checked against configured valid keys; returns 401 on mismatch
+- **Frontend integration**: The frontend automatically attaches the `X-API-Key` header (configured via `NEXT_PUBLIC_API_KEY` in `.env.local`)
+
+### Latency Profiling
+
+Verified wall-clock timings are logged in `docs/LATENCY_LOG.md`. Individual components can be profiled via scripts in `scripts/`:
+
+```bash
+python scripts/profile_retrieval.py
+python scripts/profile_full_pipeline.py
+python scripts/load_test.py --concurrency 2 --requests 3
+```
 
 ---
 
