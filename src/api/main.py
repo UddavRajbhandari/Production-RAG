@@ -39,7 +39,6 @@ logging.basicConfig(
 _log_load("logging.basicConfig done")
 
 from fastapi import Depends, FastAPI  # noqa: E402
-from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 _log_load("fastapi imported")
 
@@ -208,6 +207,13 @@ _log_load("FastAPI() created")
 
 _register_routes(app)
 
+
+@app.get("/")
+async def root() -> dict[str, str]:
+    """Root endpoint — shows clean status on HF Spaces App tab."""
+    return {"status": "running", "app": "Production RAG API"}
+
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
@@ -231,16 +237,6 @@ _log_load("middleware added")
 async def liveness_check() -> dict[str, str]:
     """Minimal liveness endpoint — no dependencies, always responds."""
     return {"status": "alive"}
-
-
-# Serve the built frontend as static files (SPA fallback)
-_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "out")
-_frontend_dir = os.path.normpath(_frontend_dir)
-if os.path.isdir(_frontend_dir):
-    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
-    _log_load("frontend static files mounted")
-else:
-    _log_load("no frontend build found at " + _frontend_dir)
 
 
 _log_load("routes defined — module load complete")

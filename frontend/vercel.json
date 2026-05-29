@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "https://username-production-rag-backend.hf.space/api/v1/$1" }
+    { "source": "/api/v1/(.*)", "destination": "https://udhov-production-rag-backend.hf.space/api/v1/$1" }
   ],
   "headers": [
     {
