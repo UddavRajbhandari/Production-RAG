@@ -76,7 +76,7 @@ latency:
   generation_budget_ms: 30000
   rerank_budget_ms: 1000
   retrieval_budget_ms: 500
-  total_p95_ms: 180000
+  total_p95_ms: 300000
 llm:
   profiles:
     groq:

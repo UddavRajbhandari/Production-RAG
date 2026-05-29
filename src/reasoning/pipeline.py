@@ -26,14 +26,14 @@ from src.reasoning.state import RAGState
 
 logger = logging.getLogger(__name__)
 
-# Pipeline execution timeout — 3 minutes matches total_p95_ms target
-PIPELINE_TIMEOUT_S = 180
+# Pipeline execution timeout — increased to 5min for slow OpenRouter free tier
+PIPELINE_TIMEOUT_S = 300
 
 
 def _timeout_error_state(query: str, llm_api_key: str | None, query_tokens: int, pii_redacted: str | None) -> RAGState:
     return {
         "query": query,
-        "generated_answer": "The query timed out after 3 minutes. Try rephrasing or simplifying your question.",
+        "generated_answer": "The query timed out. Try rephrasing or simplifying your question.",
         "sub_tasks": [],
         "retrieved_context": [],
         "current_node": "",
