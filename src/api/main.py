@@ -81,7 +81,7 @@ logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
 
 limiter = Limiter(
     key_func=get_rate_limit_key,
-    default_limits=[f"{max(settings.rate_limit_per_minute, 120)}/minute"],
+    default_limits=[f"{settings.rate_limit_per_minute}/minute"],
 )
 
 _log_load("Limiter() done")
