@@ -7,7 +7,8 @@ Phase 8.3: User-provided LLM key flow.
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import app, settings
+from src.api.main import app
+from src.api.models.models import settings
 
 
 @pytest.fixture

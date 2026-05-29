@@ -145,7 +145,7 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
 
 @router.post("/query", response_model=QueryResponse)
 @limiter.exempt
-async def query(request: QueryRequest) -> QueryResponse:
+async def query(query_req: QueryRequest) -> QueryResponse:
     """Submit a query to the RAG pipeline.
 
     Processes the query through the LangGraph reasoning engine
@@ -159,7 +159,7 @@ async def query(request: QueryRequest) -> QueryResponse:
     """
     # Concurrent query gate — strict limit for system key, safety cap for user key
     active = query_tracker.active_count()
-    if request.llm_api_key:
+    if query_req.llm_api_key:
         if active >= 10:
             raise HTTPException(
                 status_code=429,
@@ -186,9 +186,9 @@ async def query(request: QueryRequest) -> QueryResponse:
     try:
         # Semantic cache check
         cache = get_semantic_cache()
-        cached = cache.get(request.query)
+        cached = cache.get(query_req.query)
         if cached is not None:
-            logger.info("Returning cached response for query: %s...", request.query[:60])
+            logger.info("Returning cached response for query: %s...", query_req.query[:60])
             pii_mask = get_pii_mask()
             clean_answer = pii_mask.redact(cached) if pii_mask.contains_pii(cached) else cached
             return QueryResponse(
@@ -203,20 +203,20 @@ async def query(request: QueryRequest) -> QueryResponse:
             )
 
         pipeline = get_reasoning_pipeline()
-        logger.info("Processing query (req=%s): %s...", request_id, request.query[:100])
+        logger.info("Processing query (req=%s): %s...", request_id, query_req.query[:100])
 
-        query_tracker.start(request_id, request.query)
+        query_tracker.start(request_id, query_req.query)
         try:
-            result = pipeline.run(request.query, llm_api_key=request.llm_api_key, request_id=request_id)
+            result = pipeline.run(query_req.query, llm_api_key=query_req.llm_api_key, request_id=request_id)
         finally:
             query_tracker.finish(request_id)
 
-        built = _build_pipeline_response(result, start_time, request.include_sources)
+        built = _build_pipeline_response(result, start_time, query_req.include_sources)
 
         # Cache the generated answer (skip timeout error answers)
         answer = built.get("answer", "")
         if answer and "Error" not in answer and "rejected" not in answer and "timed out" not in answer:
-            cache.set(request.query, answer)
+            cache.set(query_req.query, answer)
 
         # Output PII redaction on the answer
         pii_mask = get_pii_mask()
@@ -252,7 +252,7 @@ async def query(request: QueryRequest) -> QueryResponse:
 
 
 @router.post("/query/retrieve")
-async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
+async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
     """Retrieve documents without generating an answer.
 
     Useful for debugging retrieval quality or custom workflows.
@@ -262,12 +262,12 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
         retriever = get_hybrid_retriever()
         logger.info(
             "Retrieving documents for: %s... (source_files=%s)",
-            request.query[:100],
-            request.source_files or "all",
+            query_req.query[:100],
+            query_req.source_files or "all",
         )
 
-        source_filter = request.source_files if request.source_files else None
-        results = retriever.search(request.query, source_files=source_filter)
+        source_filter = query_req.source_files if query_req.source_files else None
+        results = retriever.search(query_req.query, source_files=source_filter)
 
         sources = [
             {
@@ -280,7 +280,7 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
         ]
 
         return {
-            "query": request.query,
+            "query": query_req.query,
             "results": sources,
             "count": len(sources),
         }
@@ -292,7 +292,7 @@ async def retrieve_only(request: QueryRequest) -> dict[str, Any]:
 
 @router.post("/query/stream")
 @limiter.exempt
-async def query_stream(request: QueryRequest) -> StreamingResponse:
+async def query_stream(query_req: QueryRequest) -> StreamingResponse:
     """Submit a query with streaming response.
 
     Uses Server-Sent Events (SSE) to stream the answer text in
@@ -307,7 +307,7 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
     """
     # Concurrent query gate — strict limit for system key, safety cap for user key
     active = query_tracker.active_count()
-    if request.llm_api_key:
+    if query_req.llm_api_key:
         if active >= 10:
             raise HTTPException(
                 status_code=429,
@@ -328,8 +328,8 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
             },
         )
 
-    if not request.stream:
-        result = await query(request)
+    if not query_req.stream:
+        result = await query(query_req)
 
         async def convert_to_stream() -> AsyncGenerator[str, None]:
             _nl = "\n"
@@ -347,11 +347,11 @@ async def query_stream(request: QueryRequest) -> StreamingResponse:
         try:
             start_time = time.time()
             pipeline = get_reasoning_pipeline()
-            logger.info("Processing streaming query (req=%s): %s...", request_id, request.query[:100])
+            logger.info("Processing streaming query (req=%s): %s...", request_id, query_req.query[:100])
 
-            query_tracker.start(request_id, request.query)
+            query_tracker.start(request_id, query_req.query)
             try:
-                result = pipeline.run(request.query, llm_api_key=request.llm_api_key, request_id=request_id)
+                result = pipeline.run(query_req.query, llm_api_key=query_req.llm_api_key, request_id=request_id)
             finally:
                 query_tracker.finish(request_id)
 

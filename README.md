@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 ---
 
-# Production RAG Pipeline
+# Production RAG Pipeline with Evaluation Layer
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white" alt="Python">
