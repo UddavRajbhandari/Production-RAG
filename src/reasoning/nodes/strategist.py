@@ -43,8 +43,20 @@ class StrategistNode:
             citation_matches = re.findall(r"\[source:\s*([^\]]+)\]", answer, re.IGNORECASE)
             # Check for (Source: ...) parenthetical pattern (case-insensitive)
             paren_matches = re.findall(r"\(source:\s*([^)]+)\)", answer, re.IGNORECASE)
+
             # Check if any known source filename appears in the answer
-            file_in_answer = any(sf in answer for sf in source_files)
+            # Normalize both sides: lowercase, strip extension, replace _/- with space
+            def _normalize(s: str) -> str:
+                name = s.lower().strip()
+                # Remove common file extensions
+                for ext in [".pdf", ".docx", ".doc", ".txt", ".csv", ".xlsx", ".md", ".json"]:
+                    if name.endswith(ext):
+                        name = name[: -len(ext)]
+                        break
+                return name.replace("_", " ").replace("-", " ").strip()
+
+            normalized_answer = answer.lower()
+            file_in_answer = any(_normalize(sf) in normalized_answer for sf in source_files)
 
             has_citation = bool(citation_matches) or bool(paren_matches) or file_in_answer
             if not has_citation:

@@ -32,16 +32,17 @@ STRICT FORMATTING RULES:
 3. **Header Spacing**: After the overview sentence, put TWO newlines before starting the list.
 4. **No Merged Paragraphs**: Never group multiple ideas into one paragraph. One idea = one bullet.
 5. **Bold Subject**: Start each bullet point with a **Bold Term** describing the point.
-6. **Citations**: You MUST end EVERY bullet point with the actual source filename in this EXACT format:
-   [Source: filename.pdf]
-   Use the source filenames from the CONTEXT provided below. Different points may cite different files.
+6. **Citations**: You MUST end EVERY bullet point with a source citation in this EXACT format:
+   [Source: filename.pdf, Section: Name]
+   Use the source info from the CONTEXT below. Different points may cite different sources.
+   If a Section is provided, include it in the citation as shown above.
 
 EXAMPLE FORMAT:
 Here is an overview sentence.
 
-- **First Point**: This is the first detail [Source: source.pdf].
+- **First Point**: This is the first detail [Source: source.pdf, Section: Introduction].
 
-- **Second Point**: This is the second detail [Source: report.docx].
+- **Second Point**: This is the second detail [Source: report.docx, Section: Findings].
 
 **Summary**: A final concluding sentence.
 
@@ -63,8 +64,10 @@ FINAL POINT-WISE ANSWER:
 
         def _format_context_entry(c: dict) -> str:
             source = c["metadata"].get("source_file", "Unknown")
+            heading = c["metadata"].get("section_heading", "")
             text = c.get("expanded_text", c["text"])
-            return f"Source: {source}\n{text}"
+            heading_line = f" (Section: {heading})" if heading else ""
+            return f"Source: {source}{heading_line}\n{text}"
 
         context_text = "\n\n---\n\n".join(_format_context_entry(c) for c in state["retrieved_context"])
 
