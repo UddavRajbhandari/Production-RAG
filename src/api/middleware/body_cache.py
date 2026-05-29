@@ -10,20 +10,23 @@ see the full body.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import MutableMapping
+from typing import Any
+
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class BodyCacheMiddleware:
     """Cache the request body at the ASGI boundary."""
 
-    def __init__(self, app: Callable[..., Awaitable[None]]) -> None:
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
     async def __call__(
         self,
-        scope: dict,
-        receive: Callable[[], Awaitable[dict]],
-        send: Callable[[dict], Awaitable[None]],
+        scope: Scope,
+        receive: Receive,
+        send: Send,
     ) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -41,7 +44,7 @@ class BodyCacheMiddleware:
 
         body_consumed = False
 
-        async def cached_receive() -> dict:
+        async def cached_receive() -> MutableMapping[str, Any]:
             nonlocal body_consumed
             if not body_consumed:
                 body_consumed = True
