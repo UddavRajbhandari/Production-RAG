@@ -105,7 +105,7 @@ llm:
     openrouter:
       endpoint: https://openrouter.ai/api/v1/chat/completions
       env_key: OPENROUTER_API_KEY
-      model: google/gemini-2.0-flash-exp:free # meta-llama/llama-3.1-8b-instruct # mistralai/mistral-small-3.1-24b-instruct:free
+      model: meta-llama/llama-3.1-8b-instruct:free
       timeout: 60
       type: api
   provider: auto # auto, groq, openai, openrouter, or ollama
