@@ -54,14 +54,10 @@ def get_semantic_cache() -> SemanticCache:
 
 
 def get_hybrid_retriever() -> "HybridRetriever":
-    """Lazy-load the hybrid retriever."""
-    global _hybrid_retriever
-    if _hybrid_retriever is None:
-        from src.retrieval.hybrid_search import HybridRetriever
+    """Lazy-load the hybrid retriever (delegates to module singleton)."""
+    from src.retrieval.hybrid_search import get_retriever
 
-        _hybrid_retriever = HybridRetriever()
-        logger.info("HybridRetriever initialized for API")
-    return _hybrid_retriever
+    return get_retriever()
 
 
 def get_reasoning_pipeline() -> "ReasoningPipeline":

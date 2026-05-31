@@ -19,6 +19,8 @@ interface UploadPanelProps {
   onFilesChange: (files: { name: string; timestamp: number }[]) => void;
 }
 
+let _documentsPromise: Promise<DocumentInfo[]> | null = null;
+
 export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: UploadPanelProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -40,7 +42,8 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
     setDocsLoading(true);
     setDocsError(null);
     try {
-      const docs = await getDocuments();
+      _documentsPromise = getDocuments();
+      const docs = await _documentsPromise;
       setDocuments(docs);
     } catch (err) {
       setDocsError(err instanceof Error ? err.message : 'Failed to load documents');
@@ -51,18 +54,18 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
 
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
+    (async () => {
       setDocsLoading(true);
       try {
-        const docs = await getDocuments();
+        _documentsPromise = _documentsPromise || getDocuments();
+        const docs = await _documentsPromise;
         if (mounted) setDocuments(docs);
       } catch (err) {
         if (mounted) setDocsError(err instanceof Error ? err.message : 'Failed to load documents');
       } finally {
         if (mounted) setDocsLoading(false);
       }
-    };
-    load();
+    })();
     return () => { mounted = false; };
   }, []);
 
@@ -118,10 +121,12 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
     // Refresh document list after upload — storage runs in a background
     // task on the backend, so poll a few times until it completes
     if (hasNewFile) {
+      _documentsPromise = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         await new Promise(r => setTimeout(r, 2000));
         try {
-          const docs = await getDocuments();
+          _documentsPromise = getDocuments();
+          const docs = await _documentsPromise;
           setDocuments(docs);
           setDocsError(null);
           break;

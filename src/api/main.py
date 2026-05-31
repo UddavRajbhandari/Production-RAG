@@ -89,7 +89,6 @@ _log_load("logger created")
 
 _storage_initialized = False
 _reasoning_pipeline = None
-_hybrid_retriever = None
 _ingestion_pipeline = None
 
 
@@ -105,14 +104,10 @@ def get_reasoning_pipeline() -> ReasoningPipeline:
 
 
 def get_hybrid_retriever() -> HybridRetriever:
-    """Lazy-load the hybrid retriever."""
-    global _hybrid_retriever
-    if _hybrid_retriever is None:
-        from src.retrieval.hybrid_search import HybridRetriever
+    """Lazy-load the hybrid retriever (delegates to module singleton)."""
+    from src.retrieval.hybrid_search import get_retriever
 
-        _hybrid_retriever = HybridRetriever()
-        logger.info("HybridRetriever initialized")
-    return _hybrid_retriever
+    return get_retriever()
 
 
 def get_ingestion_pipeline() -> IngestionPipeline:

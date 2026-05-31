@@ -12,8 +12,6 @@ import time
 from typing import Any
 
 from src.reasoning.state import RAGState
-from src.retrieval.hybrid_search import HybridRetriever
-from src.retrieval.reranker import CrossEncoderReranker
 
 logger = logging.getLogger(__name__)
 
@@ -181,8 +179,11 @@ class CalculationAgentNode:
     """Node that retrieves numerical data and performs calculations."""
 
     def __init__(self) -> None:
-        self.retriever = HybridRetriever()
-        self.reranker = CrossEncoderReranker()
+        from src.retrieval.hybrid_search import get_retriever
+        from src.retrieval.reranker import get_reranker
+
+        self.retriever = get_retriever()
+        self.reranker = get_reranker()
 
     def process(self, state: RAGState) -> RAGState:
         """Retrieves context, extracts numbers, performs calculation."""
