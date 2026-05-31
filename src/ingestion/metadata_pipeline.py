@@ -48,6 +48,9 @@ class MetadataPipeline:
                     "chunk_index": i,
                     "date": document_year,
                     "department": department,
+                    "summary": "",
+                    "keywords": [],
+                    "hypothetical_questions": [],
                 }
             )
 
