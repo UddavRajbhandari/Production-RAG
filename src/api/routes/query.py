@@ -204,7 +204,7 @@ async def query(query_req: QueryRequest, request: Request) -> QueryResponse:
         pipeline = get_reasoning_pipeline()
         logger.info("Processing query (req=%s): %s...", request_id, query_req.query[:100])
 
-        query_tracker.start(request_id, query_req.query)
+        query_tracker.start(request_id, query_req.query, tenant_id)
         try:
             result = pipeline.run(
                 query_req.query,
@@ -401,7 +401,7 @@ async def query_stream(query_req: QueryRequest, request: Request) -> StreamingRe
             logger.info("Processing streaming query (req=%s): %s...", request_id, query_req.query[:100])
             tenant_id = getattr(request.state, "tenant_id", "")
 
-            query_tracker.start(request_id, query_req.query)
+            query_tracker.start(request_id, query_req.query, tenant_id)
             try:
                 result = pipeline.run(
                     query_req.query,
@@ -465,15 +465,16 @@ async def query_stream(query_req: QueryRequest, request: Request) -> StreamingRe
 
 
 @router.post("/debug/active_queries")
-async def debug_active_queries() -> dict[str, Any]:
-    """Return all in-flight queries with their ages and current node.
+async def debug_active_queries(request: Request) -> dict[str, Any]:
+    """Return in-flight queries scoped to the caller's tenant.
 
     Useful for diagnosing stuck queries without restarting the server.
     """
-    active = query_tracker.get_active()
+    tenant_id = getattr(request.state, "tenant_id", "")
+    active = query_tracker.get_active(tenant_id)
     stale_ids = query_tracker.get_stale()
     return {
-        "active_count": query_tracker.active_count(),
+        "active_count": len(active),
         "active_queries": active,
         "stale_ids": stale_ids,
         "hint": "If queries appear stuck, call /debug/clear_query with the request_id",
@@ -481,15 +482,16 @@ async def debug_active_queries() -> dict[str, Any]:
 
 
 @router.post("/debug/clear_query")
-async def debug_clear_query(request_id: str) -> dict[str, Any]:
-    """Forcefully remove a query from the in-flight tracker.
+async def debug_clear_query(request: Request, request_id: str) -> dict[str, Any]:
+    """Forcefully remove a query from the in-flight tracker (tenant-scoped).
 
     Does NOT stop the underlying pipeline execution — it only removes
     the tracker entry so a new query can proceed.
     """
-    existed = query_tracker.force_clear(request_id)
+    tenant_id = getattr(request.state, "tenant_id", "")
+    existed = query_tracker.force_clear(request_id, tenant_id)
     if existed:
-        logger.warning("Force-cleared tracker entry for request %s", request_id)
+        logger.warning("Force-cleared tracker entry for request %s (tenant=%s)", request_id, tenant_id)
     return {
         "cleared": existed,
         "request_id": request_id,
