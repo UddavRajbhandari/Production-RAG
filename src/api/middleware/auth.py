@@ -1,74 +1,51 @@
 """
 API Key authentication middleware.
+
+Validates X-API-Key against TenantStore and attaches tenant_id
+to request.state for downstream tenant-scoped filtering.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
-from fastapi import HTTPException, Request, Security
-from fastapi.security import APIKeyHeader
-
-if TYPE_CHECKING:
-    pass
+from fastapi import HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
-# Define the header name
 API_KEY_NAME = "X-API-Key"  # pragma: allowlist secret
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+_EXEMPT_PREFIXES = ("/api/v1/health", "/api/v1/session", "/health/")
 
 
-async def verify_api_key(
-    request: Request,
-    api_key: str = Security(api_key_header),
-) -> str:
+async def verify_api_key(request: Request) -> str:
     """
-    Verify the API key provided in the request header.
+    Verify the API key and attach tenant_id to request.state.
 
-    Skips auth for:
-    - Health & root endpoints
-    - Same-origin requests (frontend served from the same Render URL)
-
-    Args:
-        request: The incoming request.
-        api_key: The API key from the header.
-
-    Returns:
-        The validated API key.
-
-    Raises:
-        HTTPException: If the API key is missing or invalid.
+    Exempts health, session/init, and root endpoints.
     """
-    from src.api.models.models import settings
-
-    # Skip auth for health and root endpoints
-    if request.url.path.startswith("/api/v1/health") or request.url.path == "/":
+    path = request.url.path
+    if any(path.startswith(p) for p in _EXEMPT_PREFIXES):
         return ""
 
-    if not settings.require_api_key:
-        return ""
-
-    # No API key provided
+    api_key = request.headers.get(API_KEY_NAME)
     if not api_key:
-        logger.debug(f"Allowing request to {request.url.path} with no API key (internal or same-origin)")
-        return ""
+        raise HTTPException(
+            status_code=401,
+            detail="Missing API Key. Provide X-API-Key header.",
+        )
 
-    # Support multiple comma-separated keys
-    valid_keys = [k.strip() for k in settings.api_key.split(",") if k.strip()]
+    from src.storage.tenant_store import get_tenant_store
 
-    # Debug logging (masked)
-    api_key_masked = f"{api_key[:3]}...{api_key[-3:]}" if len(api_key) > 6 else "***"
-    logger.info(f"Verifying API key {api_key_masked} against {len(valid_keys)} valid keys")
+    store = get_tenant_store()
+    tenant_id = store.lookup_tenant(api_key)
 
-    if api_key not in valid_keys:
-        logger.warning(f"Invalid API key provided for request to {request.url.path}")
-        if not valid_keys:
-            logger.error("No valid API keys configured in settings. Check API_KEY env var on backend.")
+    if not tenant_id:
+        logger.warning("Invalid API key provided for request to %s", path)
         raise HTTPException(
             status_code=401,
             detail="Invalid API Key.",
         )
 
+    request.state.tenant_id = tenant_id
     return api_key

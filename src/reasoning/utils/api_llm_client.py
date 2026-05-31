@@ -12,8 +12,6 @@ from typing import Any
 
 import httpx
 
-from src.reasoning.utils.json_parser import safe_json_parse
-
 logger = logging.getLogger(__name__)
 
 
@@ -180,16 +178,3 @@ class APILLMClient:
             "success": True,
             "error": None,
         }
-
-    def generate_json(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        default: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Generate and parse JSON response."""
-        result = self.generate(prompt, format_json=True, temperature=temperature)
-        if not result["success"]:
-            logger.error(f"JSON generation failed: {result['error']}")
-            return default or {}
-        return safe_json_parse(result["text"], default)

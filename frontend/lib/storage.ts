@@ -1,9 +1,31 @@
 import type { ChatMessage, ChatSession } from '@/types';
 
-const STORAGE_KEY = 'openrouter_api_key';
+const STORAGE_KEY = 'openrouter_api_key';  // pragma: allowlist secret
+const SESSION_API_KEY = 'app_api_key';  // pragma: allowlist secret
+const TENANT_ID_KEY = 'tenant_id';  // pragma: allowlist secret
 const SESSIONS_KEY = 'chat_sessions';
 const ACTIVE_SESSION_KEY = 'active_session_id';
 const MAX_SESSIONS = 50;
+
+export function getStoredSessionApiKey(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(SESSION_API_KEY) || '';
+}
+
+export function setStoredSessionApiKey(key: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SESSION_API_KEY, key);
+}
+
+export function getStoredTenantId(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(TENANT_ID_KEY) || '';
+}
+
+export function setStoredTenantId(id: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TENANT_ID_KEY, id);
+}
 
 export function getStoredApiKey(): string {
   if (typeof window === 'undefined') return '';

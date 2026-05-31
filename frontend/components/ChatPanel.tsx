@@ -87,6 +87,49 @@ function renderBlock(block: string, key: number): React.ReactNode {
   const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
 
+  // Markdown table detection
+  const isTable = lines.length >= 2 && lines.every(l => l.startsWith('|') && l.endsWith('|'));
+  const separatorIdx = isTable ? lines.findIndex(l => /^\|[-:\s|]+\|$/.test(l)) : -1;
+  if (separatorIdx >= 0) {
+    const headers = lines[0].split('|').filter(c => c.trim()).map(c => c.trim());
+    const alignments = lines[separatorIdx].split('|').filter(c => c.trim()).map(c => {
+      if (c.startsWith(':') && c.endsWith(':')) return 'center';
+      if (c.endsWith(':')) return 'right';
+      return 'left';
+    });
+    const rows = lines.slice(separatorIdx + 1).map(row =>
+      row.split('|').filter(c => c.trim()).map(c => c.trim())
+    );
+    return (
+      <div key={key} className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-border-subtle">
+              {headers.map((h, i) => (
+                <th key={i} className={`px-3 py-1.5 font-semibold text-text-primary ${i > 0 ? 'border-l border-border-subtle' : ''}`}
+                  style={alignments[i] === 'right' ? {textAlign: 'right'} : alignments[i] === 'center' ? {textAlign: 'center'} : undefined}>
+                  {parseInline(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri} className={ri < rows.length - 1 ? 'border-b border-border-subtle/50' : ''}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className={`px-3 py-1.5 text-text-secondary ${ci > 0 ? 'border-l border-border-subtle' : ''}`}
+                    style={alignments[ci] === 'right' ? {textAlign: 'right'} : alignments[ci] === 'center' ? {textAlign: 'center'} : undefined}>
+                    {parseInline(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   const allNumbered = lines.every(l => /^\d+[.)]\s/.test(l));
   if (allNumbered) {
     return (
@@ -193,6 +236,29 @@ const MessageBubble = memo(function MessageBubble({ msg, expandedSources, onTogg
         </div>
       )}
 
+      {msg.role === 'assistant' && msg.source_files && msg.source_files.length > 0 && (
+        <div className="ml-4 mt-2">
+          <button
+            onClick={() => onToggleSources(msg.id + '-files')}
+            className="flex items-center gap-1.5 text-xs text-text-muted hover:text-accent-primary transition-colors"
+          >
+            {expandedSources.has(msg.id + '-files') ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            <FileText size={12} />
+            <span>Source files ({msg.source_files.length})</span>
+          </button>
+          {expandedSources.has(msg.id + '-files') && (
+            <div className="mt-1.5 space-y-0.5">
+              {msg.source_files.map((f, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 rounded border border-border-subtle bg-background-muted px-2.5 py-1 text-[10px]">
+                  <FileText size={10} className="shrink-0 text-accent-primary" />
+                  <span className="text-text-secondary">{f}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {msg.role === 'assistant' && msg.validation_passed !== undefined && (
         <div className="ml-4 mt-2 space-y-1.5">
           <div className="flex items-center gap-2">
@@ -204,6 +270,16 @@ const MessageBubble = memo(function MessageBubble({ msg, expandedSources, onTogg
             {msg.latency_ms !== undefined && (
               <span className="text-[10px] text-text-muted">
                 {(msg.latency_ms / 1000).toFixed(2)}s
+              </span>
+            )}
+            {msg.total_tokens_used !== undefined && msg.total_tokens_used > 0 && (
+              <span className="text-[10px] text-text-muted ml-2">
+                ~{msg.total_tokens_used} est. tokens
+              </span>
+            )}
+            {msg.source_files !== undefined && msg.source_files.length > 0 && (
+              <span className="text-[10px] text-text-muted ml-2">
+                {msg.source_files.length} file{msg.source_files.length > 1 ? 's' : ''}
               </span>
             )}
           </div>

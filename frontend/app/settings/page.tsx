@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Trash2, CheckCircle2, AlertCircle, Loader2, RefreshCw, Server, Cpu, Database, Brain, Wifi, HardDrive, Wrench } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { checkHealth } from '@/lib/api';
-import { getStoredApiKey, setStoredApiKey, clearStoredApiKey } from '@/lib/storage';
+import { getStoredApiKey, setStoredApiKey, clearStoredApiKey, getStoredTenantId, getStoredSessionApiKey, setStoredSessionApiKey, setStoredTenantId } from '@/lib/storage';
 import type { HealthStatus } from '@/types';
 
 export default function SettingsPage() {
@@ -14,6 +14,8 @@ export default function SettingsPage() {
   const [cleared, setCleared] = useState(false);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
+  const [sessionKey, setSessionKey] = useState('');
+  const [tenantId, setTenantId] = useState('');
 
   useEffect(() => {
     setApiKey(getStoredApiKey());
@@ -48,6 +50,26 @@ export default function SettingsPage() {
   useEffect(() => {
     handleRefreshHealth();
   }, []);
+
+  useEffect(() => {
+    setSessionKey(getStoredSessionApiKey());
+    setTenantId(getStoredTenantId());
+  }, []);
+
+  const handleReInitSession = async () => {
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${base}/api/v1/session/init`, { method: 'POST' });
+      if (!res.ok) return;
+      const data = await res.json() as { api_key: string; tenant_id: string };
+      setStoredSessionApiKey(data.api_key);
+      setStoredTenantId(data.tenant_id);
+      setSessionKey(data.api_key);
+      setTenantId(data.tenant_id);
+    } catch {
+      // ignore
+    }
+  };
 
   const llmMode = health?.components?.llm_mode || 'none';
   const llmProvider = health?.components?.llm_provider || 'unknown';
@@ -145,6 +167,52 @@ export default function SettingsPage() {
               <p className="text-[10px] text-text-muted">
                 Your key is stored only in your browser and sent directly to the API.
                 It is never saved on our servers.
+              </p>
+            </div>
+          </section>
+
+          {/* Session */}
+          <section className="rounded-card border border-border bg-background-surface p-5">
+            <div className="mb-5 flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-input bg-accent-primary/10 text-accent-primary">
+                <Wifi size={16} />
+              </div>
+              <div>
+                <h2 className="font-display text-base font-semibold text-text-primary">
+                  Session
+                </h2>
+                <p className="text-xs text-text-muted">App API key and tenant isolation</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-input border border-border bg-background-muted p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Tenant ID</span>
+                  <span className="text-xs font-mono font-medium text-accent-primary">
+                    {tenantId || '—'}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-text-muted">API Key</span>
+                  <span className="text-xs font-mono text-text-secondary">
+                    {sessionKey
+                      ? `${sessionKey.slice(0, 12)}...${sessionKey.slice(-4)}`
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleReInitSession}
+                className="flex items-center gap-1.5 rounded-input border border-border px-4 py-2 text-xs font-medium text-text-secondary transition-all hover:bg-background-muted hover:text-text-primary"
+              >
+                <RefreshCw size={12} />
+                Re-initialize Session
+              </button>
+
+              <p className="text-[10px] text-text-muted">
+                Session is automatically created on first visit. Re-initialize if you need a new API key or tenant ID.
               </p>
             </div>
           </section>

@@ -6,7 +6,7 @@ import UploadPanel from '@/components/UploadPanel';
 import ChatPanel from '@/components/ChatPanel';
 import PastQueries from '@/components/PastQueries';
 import StartupSkeleton from '@/components/StartupSkeleton';
-import { getActiveSession, getSession, createSession, setActiveSession, updateSessionMessages, updateSessionFiles } from '@/lib/storage';
+import { getActiveSession, getSession, createSession, setActiveSession, updateSessionMessages, updateSessionFiles, getStoredSessionApiKey, setStoredSessionApiKey, setStoredTenantId } from '@/lib/storage';
 import type { ChatMessage } from '@/types';
 
 export default function HomePage() {
@@ -63,6 +63,26 @@ export default function HomePage() {
     setCurrentSessionId(session.id);
     setMessages(session.messages);
     setSessionFiles(session.files);
+  }, [backendReady]);
+
+  // Auto-init app session key on first load
+  useEffect(() => {
+    if (!backendReady) return;
+    if (getStoredSessionApiKey()) return;
+
+    const init = async () => {
+      try {
+        const base = process.env.NEXT_PUBLIC_API_URL || '';
+        const res = await fetch(`${base}/api/v1/session/init`, { method: 'POST' });
+        if (!res.ok) return;
+        const data = await res.json() as { api_key: string; tenant_id: string };
+        setStoredSessionApiKey(data.api_key);
+        setStoredTenantId(data.tenant_id);
+      } catch {
+        // will retry on next page load
+      }
+    };
+    init();
   }, [backendReady]);
 
   const handleSelectSession = useCallback((id: string) => {

@@ -9,7 +9,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from src.api.guardrails.pii_mask import PIIMask
@@ -143,7 +143,7 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
 
 @router.post("/query", response_model=QueryResponse)
 @limiter.exempt
-async def query(query_req: QueryRequest) -> QueryResponse:
+async def query(query_req: QueryRequest, request: Request) -> QueryResponse:
     """Submit a query to the RAG pipeline.
 
     Processes the query through the LangGraph reasoning engine
@@ -180,6 +180,7 @@ async def query(query_req: QueryRequest) -> QueryResponse:
 
     request_id = str(uuid.uuid4())
     start_time = time.time()
+    tenant_id = getattr(request.state, "tenant_id", "")
 
     try:
         # Semantic cache check
@@ -205,7 +206,12 @@ async def query(query_req: QueryRequest) -> QueryResponse:
 
         query_tracker.start(request_id, query_req.query)
         try:
-            result = pipeline.run(query_req.query, llm_api_key=query_req.llm_api_key, request_id=request_id)
+            result = pipeline.run(
+                query_req.query,
+                llm_api_key=query_req.llm_api_key,
+                request_id=request_id,
+                tenant_id=tenant_id,
+            )
         finally:
             query_tracker.finish(request_id)
 
@@ -250,7 +256,7 @@ async def query(query_req: QueryRequest) -> QueryResponse:
 
 
 @router.post("/query/retrieve")
-async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
+async def retrieve_only(query_req: QueryRequest, request: Request) -> dict[str, Any]:
     """Retrieve documents without generating an answer.
 
     Useful for debugging retrieval quality or custom workflows.
@@ -265,7 +271,8 @@ async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
         )
 
         source_filter = query_req.source_files if query_req.source_files else None
-        results = retriever.search(query_req.query, source_files=source_filter)
+        tenant_id = getattr(request.state, "tenant_id", "")
+        results = retriever.search(query_req.query, source_files=source_filter, tenant_id=tenant_id)
 
         sources = [
             {
@@ -290,7 +297,7 @@ async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
 
 @router.post("/query/stream")
 @limiter.exempt
-async def query_stream(query_req: QueryRequest) -> StreamingResponse:
+async def query_stream(query_req: QueryRequest, request: Request) -> StreamingResponse:
     """Submit a query with streaming response.
 
     Uses Server-Sent Events (SSE) to stream the answer text in
@@ -327,7 +334,7 @@ async def query_stream(query_req: QueryRequest) -> StreamingResponse:
         )
 
     if not query_req.stream:
-        result = await query(query_req)
+        result = await query(query_req, request)
 
         async def convert_to_stream() -> AsyncGenerator[str, None]:
             _nl = "\n"
@@ -344,17 +351,73 @@ async def query_stream(query_req: QueryRequest) -> StreamingResponse:
         request_id = str(uuid.uuid4())
         try:
             start_time = time.time()
+
+            # Semantic cache check
+            cache = get_semantic_cache()
+            cached = cache.get(query_req.query)
+            if cached is not None:
+                logger.info(
+                    "Returning cached response for stream query (req=%s): %s...",
+                    request_id,
+                    query_req.query[:60],
+                )
+                pii_mask = get_pii_mask()
+                clean_answer = pii_mask.redact(cached) if pii_mask.contains_pii(cached) else cached
+                chunk_size = 50
+                _nl = "\n"
+                for line in clean_answer.split("\n"):
+                    if not line:
+                        yield f"data: {json.dumps({'t': _nl})}\n\n"
+                        continue
+                    start = 0
+                    while start < len(line):
+                        if start + chunk_size >= len(line):
+                            yield f"data: {json.dumps({'t': line[start:]})}\n\n"
+                            break
+                        end = start + chunk_size
+                        if end < len(line) and not line[end].isspace() and end > start:
+                            last_space = line.rfind(" ", start, end)
+                            if last_space > start:
+                                end = last_space + 1
+                        yield f"data: {json.dumps({'t': line[start:end]})}\n\n"
+                        start = end
+                metadata: dict[str, object] = {
+                    "answer": clean_answer,
+                    "sources": None,
+                    "source_files": [],
+                    "latency_ms": int((time.time() - start_time) * 1000),
+                    "validation_passed": True,
+                    "error_message": None,
+                    "node_evaluations": None,
+                    "ragas_scores": None,
+                    "total_tokens_used": 0,
+                    "cached": True,
+                }
+                yield f"data: {json.dumps(metadata)}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
             pipeline = get_reasoning_pipeline()
             logger.info("Processing streaming query (req=%s): %s...", request_id, query_req.query[:100])
+            tenant_id = getattr(request.state, "tenant_id", "")
 
             query_tracker.start(request_id, query_req.query)
             try:
-                result = pipeline.run(query_req.query, llm_api_key=query_req.llm_api_key, request_id=request_id)
+                result = pipeline.run(
+                    query_req.query,
+                    llm_api_key=query_req.llm_api_key,
+                    request_id=request_id,
+                    tenant_id=tenant_id,
+                )
             finally:
                 query_tracker.finish(request_id)
 
             built = _build_pipeline_response(result, start_time, True)
             answer = built.pop("answer", "")
+
+            # Cache the generated answer (skip timeout error answers)
+            if answer and "Error" not in answer and "rejected" not in answer and "timed out" not in answer:
+                cache.set(query_req.query, answer)
 
             # Stream answer text as SSE events, one per line.
             # Split on \n first so no data: line ever contains a newline —

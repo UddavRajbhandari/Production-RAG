@@ -296,8 +296,10 @@ async def ingest_file(file: UploadFile, request: Request) -> IngestResponse:
         # content-hashed path by default). This ensures downstream filtering
         # by session file names actually matches.
         original_name = file.filename or os.path.basename(save_path)
+        tenant_id = getattr(request.state, "tenant_id", "")
         for node in nodes:
             node.metadata["source_file"] = original_name
+            node.metadata["tenant_id"] = tenant_id
 
         # Return immediately — storage runs in background to avoid Render's
         # 60-second response timeout. Qdrant + Neon storage for 600+ chunks

@@ -4,7 +4,6 @@ Classifies raw parsed blocks into a tagged document tree.
 Enforces junk filters and converts tables to LLM-friendly formats.
 """
 
-import json
 from typing import Any
 
 
@@ -88,8 +87,3 @@ class StructureAnalyzer:
                 markdown += separator + "\n"
 
         return markdown
-
-    def save_tree(self, tree: list[dict[str, Any]], output_path: str) -> None:
-        """Serializes the structured tree to a JSON file for debugging."""
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(tree, f, indent=2, ensure_ascii=False)

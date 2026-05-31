@@ -1,11 +1,16 @@
 import type { QueryRequest, QueryResponse, RetrieveResponse, HealthStatus, DocumentInfo, Source, NodeEvaluation, RagasScores } from '@/types';
+import { getStoredSessionApiKey } from './storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+export function getApiKey(): string {
+  return getStoredSessionApiKey() || process.env.NEXT_PUBLIC_API_KEY || '';
+}
 
 function getHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || '',
+    'X-API-Key': getApiKey(),
   };
 }
 

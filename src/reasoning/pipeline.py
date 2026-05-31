@@ -30,7 +30,13 @@ logger = logging.getLogger(__name__)
 PIPELINE_TIMEOUT_S = 300
 
 
-def _timeout_error_state(query: str, llm_api_key: str | None, query_tokens: int, pii_redacted: str | None) -> RAGState:
+def _timeout_error_state(
+    query: str,
+    llm_api_key: str | None,
+    query_tokens: int,
+    pii_redacted: str | None,
+    tenant_id: str,
+) -> RAGState:
     return {
         "query": query,
         "generated_answer": "The query timed out. Try rephrasing or simplifying your question.",
@@ -45,6 +51,7 @@ def _timeout_error_state(query: str, llm_api_key: str | None, query_tokens: int,
         "pii_redacted_query": pii_redacted,
         "total_tokens_used": query_tokens,
         "source_files": [],
+        "tenant_id": tenant_id,
     }
 
 
@@ -131,6 +138,7 @@ class ReasoningPipeline:
         query: str,
         llm_api_key: str | None = None,
         request_id: str | None = None,
+        tenant_id: str = "",
     ) -> RAGState:
         """Executes the pipeline for a single query.
 
@@ -141,6 +149,7 @@ class ReasoningPipeline:
             query: The user query
             llm_api_key: Optional API key override
             request_id: Optional ID for in-flight query tracking
+            tenant_id: Tenant isolation ID for scoped retrieval
         """
         self._request_id = request_id
         query_tokens = self.token_budget.count_tokens(query)
@@ -162,6 +171,7 @@ class ReasoningPipeline:
                 "pii_redacted_query": None,
                 "total_tokens_used": query_tokens,
                 "source_files": [],
+                "tenant_id": tenant_id,
             }
 
         # Step 2: PII redaction
@@ -186,6 +196,7 @@ class ReasoningPipeline:
             "pii_redacted_query": pii_redacted,
             "total_tokens_used": 0,
             "source_files": [],
+            "tenant_id": tenant_id,
         }
 
         query_for_log = pii_redacted or query
@@ -207,7 +218,7 @@ class ReasoningPipeline:
                 request_id,
                 query_for_log[:100],
             )
-            return _timeout_error_state(query, llm_api_key, query_tokens, pii_redacted)
+            return _timeout_error_state(query, llm_api_key, query_tokens, pii_redacted, tenant_id)
         finally:
             # Don't wait for the thread — it will finish on its own via httpx timeouts
             executor.shutdown(wait=False)

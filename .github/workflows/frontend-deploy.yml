@@ -4,7 +4,7 @@
 name: Frontend Check
 on:
   push:
-    branches: [main, feat/**]
+    branches: [main, dev, feat/**]
     paths: ['frontend/**']
   pull_request:
     branches: [main]

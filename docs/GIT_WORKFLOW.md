@@ -53,36 +53,43 @@ git checkout main
 git status                        # must show nothing uncommitted
 
 # Step 2 — Create and switch to your branch
-git checkout -b fix/your-branch-name
+git checkout -b feat/your-branch-name
 
-# Step 3 — Write tests FIRST (TDD — required by GEMINI.md)
+# Step 3 — Write tests FIRST (TDD — required by AGENTS.md)
 # Edit tests/unit/test_<module>.py before touching implementation
 
 # Step 4 — Implement the change
 # Edit the relevant source files
 
-# Step 5 — Run local CI — must be green before committing
-bash scripts/run_ci_local.sh
-
-# Step 6 — Stage only the files relevant to this change
-git add src/path/to/changed_file.py
-git add tests/unit/test_changed_file.py
-
-# Step 7 — Commit with a structured message (see format below)
-git commit -m "fix: short summary of what changed
+# Step 5 — Stage and commit locally (pre-commit hooks run automatically)
+git add -A
+git commit -m "type: short summary
 
 - What changed and why
-- Quantitative result if available
+- Quantitative result if available"
 
-Refs: Phase-X-Fix-Guide #N"
+# Step 6 — Push to GitHub — CI runs automatically on push
+git push origin feat/your-branch-name
+
+# Step 7 — Wait for CI to pass (check GitHub → Actions tab)
+# CI runs: ruff lint, ruff format, mypy, unit tests, Docker build
+# Fix any failures, commit fixes, and re-push until green
 
 # Step 8 — Merge back into main with --no-ff (preserves branch history)
 git checkout main
-git merge fix/your-branch-name --no-ff
+git merge feat/your-branch-name --no-ff
 
-# Step 9 — Delete the branch — it served its purpose
-git branch -d fix/your-branch-name
+# Step 9 — Push main — CI runs again + triggers staging deploy
+git push origin main
+
+# Step 10 — Delete the branch — it served its purpose
+git branch -d feat/your-branch-name
 ```
+
+> **Note**: Prior to this workflow, merges happened locally without remote CI validation.
+> Now CI must pass on the branch before merging to main. The RAGAS regression guard
+> (`ci.yml` job 3) runs only on `main` — everything else (quality, tests, Docker build)
+> runs on `feat/*` pushes.
 
 ---
 

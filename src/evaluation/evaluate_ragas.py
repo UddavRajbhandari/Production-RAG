@@ -14,7 +14,6 @@ sys.path.insert(0, os.getcwd())
 
 from src.reasoning.pipeline import ReasoningPipeline
 
-# Common stopwords for keyword filtering (module-level)
 STOPWORDS: set[str] = {
     "the",
     "a",
@@ -109,14 +108,12 @@ STOPWORDS: set[str] = {
 
 
 def compute_context_precision(question: str, contexts: list[str]) -> float:
-    """Compute context precision: relevance of retrieved chunks to question."""
     if not contexts:
         return 0.0
     question_words = set(question.lower().split())
     question_keywords = question_words - STOPWORDS
     if not question_keywords:
         return 0.0
-
     relevant_count = 0
     for ctx in contexts:
         ctx_words = set(ctx.lower().split())
@@ -126,87 +123,15 @@ def compute_context_precision(question: str, contexts: list[str]) -> float:
     return float(relevant_count / len(contexts))
 
 
-def compute_faithfulness(ground_truth_answer: str, generated_answer: str, contexts: list[str]) -> float:
-    """Compute faithfulness: whether answer is grounded in retrieved contexts."""
-    if not generated_answer or not contexts:
-        return 0.0
-
-    import re
-
-    sentences = re.split(r"[.!?]+", ground_truth_answer)
-    verifiable_claims: list[int] = []
-    combined_context = " ".join(contexts).lower()
-
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if len(sentence) < 10:
-            continue
-        words = set(sentence.lower().split()) - STOPWORDS
-        if words:
-            overlap = len(words & set(combined_context.split()))
-            if overlap / len(words) > 0.3:
-                verifiable_claims.append(1)
-            else:
-                verifiable_claims.append(0)
-
-    if not verifiable_claims:
-        return 0.5
-
-    return sum(verifiable_claims) / len(verifiable_claims)
-
-
-def compute_context_recall(ground_truth_answer: str, contexts: list[str]) -> float:
-    """Compute context recall: whether retrieved contexts contain the ground truth."""
-    if not contexts or not ground_truth_answer:
-        return 0.0
-
-    combined_context = " ".join(contexts).lower()
-    gt_words = set(ground_truth_answer.lower().split()) - STOPWORDS
-
-    if not gt_words:
-        return 0.0
-
-    matched_terms = 0
-    for word in gt_words:
-        if len(word) < 4:
-            continue
-        if word in combined_context:
-            matched_terms += 1
-
-    return matched_terms / len(gt_words)
-
-
-def compute_answer_relevancy(question: str, generated_answer: str) -> float:
-    """Compute answer relevancy: how well answer addresses the question."""
-    if not generated_answer:
-        return 0.0
-
-    q_words = set(question.lower().split()) - STOPWORDS
-    a_words = set(generated_answer.lower().split()) - STOPWORDS
-
-    if not q_words:
-        return 0.5
-
-    overlap = len(q_words & a_words)
-    base_score = overlap / len(q_words)
-
-    length = len(generated_answer.split())
-    length_factor = min(length / 50, 1.0)
-
-    return float(min(base_score * length_factor * 2, 1.0))
-
-
 def compute_answer_completeness(answer: str) -> float:
-    """Compute answer completeness: length-based proxy for answer thoroughness."""
     length = len(answer.split())
     if length < 20:
         return 0.3
-    elif length < 50:
+    if length < 50:
         return 0.6
-    elif length < 100:
+    if length < 100:
         return 0.8
-    else:
-        return 1.0
+    return 1.0
 
 
 def load_ground_truth(path: str) -> list[dict[str, Any]]:

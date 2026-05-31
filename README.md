@@ -111,7 +111,7 @@ Triple-backend storage for dense vectors, sparse keywords, and relational metada
 | **QdrantStorage** | `qdrant_storage.py` | Cloud (Qdrant Cloud) or local Docker | Dense vector store (384-dim, cosine similarity). Supports payload indexes on `date`, `department`, `source_file` |
 | **BM25Storage / QdrantSparseStorage** | `bm25_storage.py`, `qdrant_sparse_storage.py` | Qdrant native sparse (cloud) or pickle file (local) | Keyword/BM25 sparse retrieval |
 | **NeonStorage** | `neon_storage.py` | Neon PostgreSQL (cloud) or SQLite (local dev) | Relational chunk metadata (source file, department, year, section heading) |
-| **Storage Factory** | `storage_factory.py` | — | Auto-selects storage backend based on environment variables |
+| **TenantStore** | `tenant_store.py` | Neon/Postgres (SQLite fallback) | API key → tenant_id resolution for multi-tenant isolation |
 | **Populate Storage** | `populate_storage.py` | — | One-time script to populate all backends from processed chunk pickles |
 
 ### 3. Retrieval & Reranking (`src/retrieval/`)
@@ -182,7 +182,7 @@ FastAPI application with full middleware stack, rate limiting, authentication, a
 | Layer | File | Role |
 |---|---|---|
 | **Main** | `main.py` | App bootstrap, lifespan management, middleware registration, embedding model pre-loading |
-| **Routes** | `routes/` | `health.py` (liveness + component health), `query.py` (standard + SSE streaming + retrieve-only), `ingest.py`, `metadata.py` |
+| **Routes** | `routes/` | `health.py` (liveness + component health), `session.py` (multi-tenant provisioning), `query.py` (standard + SSE streaming + retrieve-only), `ingest.py`, `metadata.py` |
 | **Middleware** | `middleware/` | `auth.py` (API key verification), `rate_limit.py` (per-key rate limiting via SlowAPI), `logging.py` (structured JSON request logging), `metrics.py` (Prometheus metrics) |
 | **Models** | `models/models.py` | Pydantic schemas for all request/response types, Settings model with env var binding |
 | **Query Tracker** | `query_tracker.py` | Thread-safe in-flight query tracking with stale detection (5min timeout) and force-clear debug endpoint |
@@ -190,9 +190,10 @@ FastAPI application with full middleware stack, rate limiting, authentication, a
 **API Endpoints**:
 
 | Endpoint | Method | Auth | Purpose |
-|---|---|---|---|
+|---|---|---|---|---|
 | `/api/v1/health/live` | GET | No | Lightweight liveness probe |
 | `/api/v1/health` | GET | No | Full component health (cached 30s) |
+| `/api/v1/session/init` | POST | No | Provision new API key + tenant ID for multi-tenant isolation |
 | `/api/v1/query` | POST | Yes | Standard query with sources |
 | `/api/v1/query/stream` | POST | Yes | SSE streaming query (50-char chunks + metadata event) |
 | `/api/v1/query/retrieve` | POST | Yes | Retrieve-only (no LLM call) |
@@ -255,13 +256,16 @@ A standalone Next.js 14 (App Router) application with TypeScript and Tailwind CS
 | **ChatPanel** | `components/ChatPanel.tsx` | Message list, streaming text display, source citations, RAGAS scores, agent evaluations. Supports "Ask" and "Retrieve" modes |
 | **UploadPanel** | `components/UploadPanel.tsx` | Drag-and-drop file upload, document list with status indicators |
 | **PastQueries** | `components/PastQueries.tsx` | Chat session history sidebar with create/delete |
-| **EvaluationPanel** | `components/EvaluationPanel.tsx` | Sidebar showing agent node evaluation chain results |
 | **StartupSkeleton** | `components/StartupSkeleton.tsx` | Full-page skeleton shimmer shown while polling backend health |
 | **ThemeToggle** | `components/ThemeToggle.tsx` | Dark/light mode switch |
 
-### API Key Management
+### Session & API Key Management
 
-API keys are stored exclusively in the browser's `localStorage` (key: `openrouter_api_key`). They are sent per-request in the `llm_api_key` field of the query body and are never persisted on the server. The Settings page allows setting, viewing, and clearing the key.
+Two separate key systems exist:
+
+1. **App Session Key** — Auto-provisioned on first visit. The frontend calls `POST /api/v1/session/init` which creates a unique `api_key` + `tenant_id` stored in `localStorage`. This key is sent as the `X-API-Key` header on all API requests for tenant-scoped data isolation.
+
+2. **LLM Provider Key** (optional) — Your OpenRouter API key (`sk-or-v1-...`) is stored under `localStorage` key `openrouter_api_key` and sent per-request in the `llm_api_key` field. Never persisted on the server. Manage it on the Settings page.
 
 ### Frontend Directory Structure
 
@@ -275,7 +279,6 @@ frontend/
 │   └── api/query/route.ts  # API proxy route
 ├── components/
 │   ├── ChatPanel.tsx
-│   ├── EvaluationPanel.tsx
 │   ├── Navbar.tsx
 │   ├── PastQueries.tsx
 │   ├── StartupSkeleton.tsx
@@ -353,8 +356,6 @@ frontend/
 │   ├── load_test.py                 ← Concurrent load testing
 │   ├── capture_trace.py             ← Capture LangGraph trace
 │   ├── validate_ragas_regression.py ← Validate RAGAS metric regression
-│   └── research/                    ← Research scripts (profiling,
-│                                       ground truth generation, auditing)
 │
 ├── data/
 │   └── ground_truth/                ← 68-pair gold evaluation set
@@ -430,7 +431,6 @@ cp .env.local.example .env.local
 
 # 3. Edit .env.local — the API URL should match your backend
 #    NEXT_PUBLIC_API_URL=http://localhost:7860
-#    NEXT_PUBLIC_API_KEY=my-secret-access-key
 
 # 4. Install dependencies
 npm install
@@ -439,7 +439,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000** in your browser. The frontend will show a skeleton screen while it polls the backend health endpoint. Once the backend responds, the full application loads.
+Open **http://localhost:3000** in your browser. The frontend shows a skeleton screen while it polls the backend health endpoint. Once the backend responds, it auto-provisions a session key via `POST /api/v1/session/init` and the full application loads.
 
 ### Docker Deployment
 
@@ -456,8 +456,9 @@ This builds the Docker image and starts the API service on port 7860.
 ### Making a Query
 
 1. Open the application in your browser (default: `http://localhost:3000`)
-2. Wait for the skeleton screen to disappear (backend health check)
-3. Type your question in the chat input at the center of the screen
+2. A session key is auto-provisioned in the background — no manual setup required
+3. Wait for the skeleton screen to disappear (backend health check)
+4. Type your question in the chat input at the center of the screen
 4. Press Enter or click the send button
 5. The response streams in as it's generated, followed by source citations and agent evaluation results
 
@@ -482,20 +483,21 @@ The default mode streams the answer token-by-token using Server-Sent Events (SSE
 4. Once processed, the document appears in the documents list
 5. Newly uploaded documents are immediately searchable by the retrieval system
 
-### Providing Your Own API Key
+### Providing Your Own LLM API Key
 
-If the system has no API key configured (or you want to use your own), navigate to:
+The app session key (for API auth) is auto-provisioned. To use your own LLM provider instead of the server default:
 
 1. Click the **Settings** icon in the top navigation bar
 2. In the **LLM Configuration** section, paste your OpenRouter API key (starts with `sk-or-v1-`)
 3. Click **Save Key**
-4. The key is stored in your browser only — it is sent per-request and never saved on the server
+4. The key is stored in your browser only — sent per-request, never saved on the server
 
-The **LLM State** section shows the provider chain status, indicating whether the system is using the environment key or your personal key.
+The **LLM State** section shows whether the system is using the environment key or your personal key.
 
 ### Monitoring System Health
 
 The **Settings** page displays real-time health status for all system components:
+- **Session**: Tenant ID and app API key status (auto-provisioned on first visit)
 - **API Server**: Backend reachability
 - **Vector DB (Qdrant)**: Vector store connection status
 - **Metadata DB (Postgres)**: Relational database connectivity
@@ -525,7 +527,7 @@ Central configuration in `config/settings.yaml` controls all major subsystems:
 - `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY` — LLM provider keys
 - `QDRANT_URL`, `QDRANT_API_KEY` — Qdrant Cloud connection
 - `DATABASE_URL` — Neon/Postgres connection string
-- `API_KEY` — API authentication key
+- `API_KEY` — Legacy fallback API key (multi-tenant auth via `TenantStore` is primary)
 - `RATE_LIMIT_PER_MINUTE` — Global rate limit (default: 3)
 - `LLM_PROVIDER` — Explicit provider override
 
@@ -573,21 +575,22 @@ Rate limiting is implemented via **SlowAPI** middleware with two tiers:
 
 | Scenario | Limit | Mechanism |
 |---|---|---|
-| Requests using the system's env API key | 3 concurrent queries max | Concurrent gate in `query.py` using `QueryTracker.active_count()` |
-| Requests with a user-provided API key | 10 concurrent queries max (server safety cap) | Same gate, higher threshold when `llm_api_key` is present |
+| Requests using the X-API-Key session key | 3 concurrent queries max | Concurrent gate in `query.py` using `QueryTracker.active_count()` |
+| Requests with a user-provided LLM key | 10 concurrent queries max (server safety cap) | Same gate, higher threshold when `llm_api_key` is present |
 | Non-query endpoints (health, metadata) | 3 requests per minute per API key | SlowAPI global `Limiter` with per-key bucketing |
 
-The rate limit key function (`src/api/middleware/rate_limit.py`) uses the `X-API-Key` header when available, falling back to the client IP address. Query routes are exempted from SlowAPI's global limit and rely on the concurrent gate instead, ensuring user-key requests aren't artificially restricted.
+The rate limit key function (`src/api/middleware/rate_limit.py`) uses the `X-API-Key` header when available, falling back to the client IP address. Query routes are exempted from SlowAPI's global limit and rely on the concurrent gate instead, ensuring LLM-key requests aren't artificially restricted.
 
-### Authentication
+### Authentication & Multi-Tenant Isolation
 
-API authentication is handled via `X-API-Key` header verification (`src/api/middleware/auth.py`):
+API authentication uses a database-backed `TenantStore` (`src/storage/tenant_store.py`):
 
 - **Header**: `X-API-Key: <key>` sent with every request
-- **Scope**: Required for all endpoints except `/health/live`, `/health`, and `/`
-- **Key format**: Supports multiple comma-separated values via the `API_KEY` environment variable
-- **Verification**: Provided key is checked against configured valid keys; returns 401 on mismatch
-- **Frontend integration**: The frontend automatically attaches the `X-API-Key` header (configured via `NEXT_PUBLIC_API_KEY` in `.env.local`)
+- **Scope**: Required for all endpoints except `/api/v1/health/live`, `/api/v1/health`, and `/api/v1/session/init`
+- **Flow**: `verify_api_key` middleware reads `X-API-Key`, resolves via `TenantStore.lookup_tenant(api_key)` → `tenant_id`, attaches `tenant_id` to `request.state`
+- **Data isolation**: Every chunk is tagged with `tenant_id` during ingestion; all retrieval queries filter by `tenant_id` via Qdrant `FieldCondition` and BM25 local filtering
+- **Session provisioning**: `POST /api/v1/session/init` creates a new tenant + API key pair. The frontend auto-calls this on first visit and stores the key in `localStorage`
+- **401 handling**: Invalid/missing keys return 401 Unauthorized
 
 ### Latency Profiling
 

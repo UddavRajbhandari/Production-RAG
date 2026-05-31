@@ -75,7 +75,12 @@ class HybridRetriever:
             except Exception as e:
                 logger.warning("Failed to reload BM25 index: %s", e)
 
-    def search(self, query: str, source_files: list[str] | None = None) -> list[dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        source_files: list[str] | None = None,
+        tenant_id: str = "",
+    ) -> list[dict[str, Any]]:
         """
         Executes parallel dense and sparse searches.
         Applies Reciprocal Rank Fusion (RRF) and returns top candidates.
@@ -84,11 +89,12 @@ class HybridRetriever:
             query: The search query text
             source_files: Optional list of source filenames to filter by.
                 When provided, only chunks from these files are returned.
+            tenant_id: Tenant isolation ID — passed to backends for scoped retrieval.
         """
         year_filter = self._extract_year_filter(query)
 
-        dense_future = self._executor.submit(self._dense_search, query, year_filter, source_files)
-        sparse_future = self._executor.submit(self._sparse_search, query, year_filter, source_files)
+        dense_future = self._executor.submit(self._dense_search, query, year_filter, source_files, tenant_id)
+        sparse_future = self._executor.submit(self._sparse_search, query, year_filter, source_files, tenant_id)
 
         dense_results = dense_future.result()
         sparse_results = sparse_future.result()
@@ -210,12 +216,23 @@ class HybridRetriever:
         query: str,
         year_filter: str | None = None,
         source_files: list[str] | None = None,
+        tenant_id: str = "",
     ) -> list[Any]:
         """Vector search against Qdrant with optional hard metadata filters."""
         query_vector = self.embed_model.encode(query).tolist()
 
         query_filter = None
         filter_conditions = []
+        if tenant_id:
+            try:
+                from qdrant_client.http import models  # noqa: PLC0415
+
+                filter_conditions.append(
+                    models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)),
+                )
+            except Exception as e:
+                logger.warning("Failed to create tenant_id filter: %s", e)
+
         if year_filter and self.use_cloud_bm25:
             try:
                 from qdrant_client.http import models  # noqa: PLC0415
@@ -293,12 +310,15 @@ class HybridRetriever:
         query: str,
         year_filter: str | None = None,
         source_files: list[str] | None = None,
+        tenant_id: str = "",
     ) -> list[TextNode]:
         """Keyword search using appropriate BM25 backend (cloud or local)."""
         if self.use_cloud_bm25:
-            return self.bm25.search(query, top_k=self.sparse_k, source_files=source_files)  # type: ignore[call-arg]
+            return self.bm25.search(query, top_k=self.sparse_k, source_files=source_files, tenant_id=tenant_id)  # type: ignore[call-arg]
 
         nodes = self.bm25.nodes
+        if tenant_id:
+            nodes = [n for n in nodes if n.metadata.get("tenant_id") == tenant_id]
         if source_files:
             source_set = set(source_files)
             nodes = [n for n in nodes if n.metadata.get("source_file") in source_set]
