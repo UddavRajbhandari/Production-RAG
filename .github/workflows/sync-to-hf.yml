@@ -1,7 +1,9 @@
-name: Sync to Hugging Face Spaces
+name: Deploy to HF Spaces
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
 concurrency:
@@ -9,8 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sync:
+  deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,3 +24,22 @@ jobs:
           huggingface_repo_id: UDHOV/production-rag-backend
           hf_token: ${{ secrets.HF_TOKEN }}
           space_sdk: docker
+
+      - name: Wait for HF Space restart
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          echo "Polling /api/v1/health/live..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              https://udhov-production-rag-backend.hf.space/api/v1/health/live 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Deployment healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i/12 — HTTP $STATUS, waiting 10s..."
+            sleep 10
+          done
+          echo "❌ Health check failed — service not responding after 2 minutes"
+          exit 1
