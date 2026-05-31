@@ -128,9 +128,10 @@ def get_ingestion_pipeline() -> IngestionPipeline:
 
 def _register_routes(app: FastAPI) -> None:
     """Register API routes (lazy-imported to minimize startup time)."""
-    from src.api.routes import health, ingest, metadata, query  # noqa: F811
+    from src.api.routes import health, ingest, metadata, query, session  # noqa: F811
 
     app.include_router(health.router, prefix="/api/v1", tags=["health"])
+    app.include_router(session.router, prefix="/api/v1", tags=["session"])
     app.include_router(
         query.router,
         prefix="/api/v1",
@@ -200,6 +201,32 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Global OpenAPI security scheme for Swagger "Authorize" button
+# This is purely for Swagger UI — actual auth is handled by verify_api_key dependency
+from fastapi.openapi.utils import get_openapi  # noqa: E402
+
+
+def _custom_openapi() -> dict:
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})["ApiKeyAuth"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+    }
+    openapi_schema.setdefault("security", []).append({"ApiKeyAuth": []})
+    app.openapi_schema = openapi_schema
+    return openapi_schema
+
+
+app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 _log_load("FastAPI() created")
 

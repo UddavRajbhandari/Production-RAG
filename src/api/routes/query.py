@@ -9,7 +9,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from src.api.guardrails.pii_mask import PIIMask
@@ -143,7 +143,7 @@ def _build_pipeline_response(result: RAGState, start_time: float, include_source
 
 @router.post("/query", response_model=QueryResponse)
 @limiter.exempt
-async def query(query_req: QueryRequest) -> QueryResponse:
+async def query(query_req: QueryRequest, request: Request) -> QueryResponse:
     """Submit a query to the RAG pipeline.
 
     Processes the query through the LangGraph reasoning engine
@@ -180,6 +180,7 @@ async def query(query_req: QueryRequest) -> QueryResponse:
 
     request_id = str(uuid.uuid4())
     start_time = time.time()
+    tenant_id = getattr(request.state, "tenant_id", "")
 
     try:
         # Semantic cache check
@@ -205,7 +206,12 @@ async def query(query_req: QueryRequest) -> QueryResponse:
 
         query_tracker.start(request_id, query_req.query)
         try:
-            result = pipeline.run(query_req.query, llm_api_key=query_req.llm_api_key, request_id=request_id)
+            result = pipeline.run(
+                query_req.query,
+                llm_api_key=query_req.llm_api_key,
+                request_id=request_id,
+                tenant_id=tenant_id,
+            )
         finally:
             query_tracker.finish(request_id)
 
@@ -250,7 +256,7 @@ async def query(query_req: QueryRequest) -> QueryResponse:
 
 
 @router.post("/query/retrieve")
-async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
+async def retrieve_only(query_req: QueryRequest, request: Request) -> dict[str, Any]:
     """Retrieve documents without generating an answer.
 
     Useful for debugging retrieval quality or custom workflows.
@@ -265,7 +271,8 @@ async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
         )
 
         source_filter = query_req.source_files if query_req.source_files else None
-        results = retriever.search(query_req.query, source_files=source_filter)
+        tenant_id = getattr(request.state, "tenant_id", "")
+        results = retriever.search(query_req.query, source_files=source_filter, tenant_id=tenant_id)
 
         sources = [
             {
@@ -290,7 +297,7 @@ async def retrieve_only(query_req: QueryRequest) -> dict[str, Any]:
 
 @router.post("/query/stream")
 @limiter.exempt
-async def query_stream(query_req: QueryRequest) -> StreamingResponse:
+async def query_stream(query_req: QueryRequest, request: Request) -> StreamingResponse:
     """Submit a query with streaming response.
 
     Uses Server-Sent Events (SSE) to stream the answer text in
@@ -327,7 +334,7 @@ async def query_stream(query_req: QueryRequest) -> StreamingResponse:
         )
 
     if not query_req.stream:
-        result = await query(query_req)
+        result = await query(query_req, request)
 
         async def convert_to_stream() -> AsyncGenerator[str, None]:
             _nl = "\n"
@@ -392,10 +399,16 @@ async def query_stream(query_req: QueryRequest) -> StreamingResponse:
 
             pipeline = get_reasoning_pipeline()
             logger.info("Processing streaming query (req=%s): %s...", request_id, query_req.query[:100])
+            tenant_id = getattr(request.state, "tenant_id", "")
 
             query_tracker.start(request_id, query_req.query)
             try:
-                result = pipeline.run(query_req.query, llm_api_key=query_req.llm_api_key, request_id=request_id)
+                result = pipeline.run(
+                    query_req.query,
+                    llm_api_key=query_req.llm_api_key,
+                    request_id=request_id,
+                    tenant_id=tenant_id,
+                )
             finally:
                 query_tracker.finish(request_id)
 

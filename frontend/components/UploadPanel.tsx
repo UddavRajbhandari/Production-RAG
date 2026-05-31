@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
-import { getDocuments } from '@/lib/api';
+import { Upload, FileText, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
+import { getDocuments, getApiKey } from '@/lib/api';
 import type { DocumentInfo } from '@/types';
 
 interface UploadedFile {
@@ -86,7 +86,7 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
           `${API_BASE}/api/v1/ingest/file`,
           {
             method: 'POST',
-            headers: { 'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || '' },
+            headers: { 'X-API-Key': getApiKey() },
             body: formData,
           }
         );

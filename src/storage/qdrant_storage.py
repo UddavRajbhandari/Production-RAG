@@ -42,11 +42,6 @@ def get_qdrant_mode() -> str:
     return "local"
 
 
-def should_use_qdrant_bm25() -> bool:
-    """Check if Qdrant Cloud with inference is available for native BM25."""
-    return bool(os.getenv("QDRANT_URL"))
-
-
 class QdrantStorage:
     """Storage client for the Qdrant dense vector backend."""
 
@@ -227,6 +222,7 @@ class QdrantStorage:
             ("date", models.PayloadSchemaType.KEYWORD),
             ("department", models.PayloadSchemaType.KEYWORD),
             ("source_file", models.PayloadSchemaType.KEYWORD),
+            ("tenant_id", models.PayloadSchemaType.KEYWORD),
         ]
         for field_name, field_type in index_fields:
             try:
@@ -234,9 +230,9 @@ class QdrantStorage:
                     collection_name=self.collection_name,
                     field_name=field_name,
                     field_schema=field_type,
-                    wait=False,
+                    wait=True,
                 )
-                logger.debug("Payload index created on '%s' (%s).", field_name, field_type)
+                logger.info("Payload index created on '%s' (%s).", field_name, field_type)
             except Exception:
                 logger.debug("Payload index on '%s' already exists — skipping.", field_name)
 

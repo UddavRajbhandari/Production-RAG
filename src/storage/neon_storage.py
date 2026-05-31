@@ -61,6 +61,7 @@ class ChunkMetadata(Base):
     date = Column(String, index=True)  # year extracted from filename
     department = Column(String, index=True)
     # Financial / Academic / Technical / General
+    tenant_id = Column(String, index=True)
     version = Column(String, default="v1.1")
     full_metadata = Column(JSON)  # complete metadata dict for arbitrary fields
     created_at = Column(
@@ -116,12 +117,37 @@ class NeonStorage:
                 "domain_tag": "VARCHAR",
                 "date": "VARCHAR",
                 "department": "VARCHAR",
+                "tenant_id": "VARCHAR",
             }
             with self.engine.connect() as conn:
                 for col_name, col_type in wanted.items():
                     if col_name not in existing:
                         conn.execute(text(f"ALTER TABLE chunk_metadata ADD COLUMN {col_name} {col_type}"))
                         logger.info("Added missing column '%s' to chunk_metadata", col_name)
+                # Backfill tenant_id from full_metadata JSON for existing rows
+                if "tenant_id" not in existing:
+                    try:
+                        dialect = conn.dialect.name
+                        if dialect == "postgresql":
+                            conn.execute(
+                                text(
+                                    "UPDATE chunk_metadata "
+                                    "SET tenant_id = full_metadata->>'tenant_id' "
+                                    "WHERE tenant_id IS NULL AND full_metadata->>'tenant_id' IS NOT NULL"
+                                )
+                            )
+                        else:
+                            conn.execute(
+                                text(
+                                    "UPDATE chunk_metadata "
+                                    "SET tenant_id = json_extract(full_metadata, '$.tenant_id') "
+                                    "WHERE tenant_id IS NULL AND json_extract(full_metadata, '$.tenant_id') IS NOT NULL"
+                                )
+                            )
+                        conn.commit()
+                        logger.info("Backfilled tenant_id from full_metadata JSON")
+                    except Exception as e:
+                        logger.warning("tenant_id backfill skipped (non-fatal): %s", e)
                 conn.commit()
         except Exception as e:
             logger.warning("Schema migration skipped (non-fatal): %s", e)
@@ -161,6 +187,7 @@ class NeonStorage:
                 domain_tag=meta.get("domain_tag"),
                 date=meta.get("date"),
                 department=meta.get("department"),
+                tenant_id=meta.get("tenant_id"),
                 version=meta.get("version", "v1.1"),
                 full_metadata=meta,
             )

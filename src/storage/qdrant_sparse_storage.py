@@ -25,8 +25,10 @@ from src.storage.qdrant_storage import QdrantStorage
 
 logger = logging.getLogger(__name__)
 
-# Smaller batch size for cloud uploads to avoid timeout
-_BATCH_SIZE = 256
+# Larger batches reduce round trips for cloud uploads.
+# Wait is disabled — Qdrant processes asynchronously and the
+# frontend already expects async storage ("processing" status).
+_BATCH_SIZE = 512
 _UPSERT_TIMEOUT = 120  # seconds
 
 
@@ -170,16 +172,23 @@ class QdrantSparseStorage:
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=points,
+                wait=False,
                 timeout=_UPSERT_TIMEOUT,
             )
 
             logger.info(
-                "Upserted %d/%d points with dense + BM25",
+                "Upserted %d/%d points with dense + BM25 (async)",
                 min(start + batch_size, total),
                 total,
             )
 
-    def search(self, query: str, top_k: int = 10, source_files: list[str] | None = None) -> list[TextNode]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 10,
+        source_files: list[str] | None = None,
+        tenant_id: str = "",
+    ) -> list[TextNode]:
         """
         Search using BM25 sparse vectors via server-side inference.
 
@@ -187,17 +196,21 @@ class QdrantSparseStorage:
             query: Query text
             top_k: Number of results to return
             source_files: Optional list of source filenames to filter by
+            tenant_id: Tenant isolation ID for scoped retrieval
 
         Returns:
             List of TextNode objects matching the query
         """
-        qfilter = None
+        filter_conditions = []
         if source_files:
-            qfilter = models.Filter(
-                should=[
-                    models.FieldCondition(key="source_file", match=models.MatchValue(value=sf)) for sf in source_files
-                ],
+            filter_conditions.append(
+                models.FieldCondition(key="source_file", match=models.MatchAny(any=list(source_files))),
             )
+        if tenant_id:
+            filter_conditions.append(
+                models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)),
+            )
+        qfilter: models.Filter | None = models.Filter(must=filter_conditions) if filter_conditions else None
 
         results = self.client.query_points(
             collection_name=self.collection_name,
@@ -223,35 +236,6 @@ class QdrantSparseStorage:
 
         logger.debug("BM25 search returned %d results for query '%s'", len(nodes), query[:50])
         return nodes
-
-    def search_with_scores(self, query: str, top_k: int = 10) -> list[tuple[TextNode, float]]:
-        """
-        Search using BM25 with score information.
-
-        Returns tuples of (TextNode, bm25_score).
-        """
-        results = self.client.query_points(
-            collection_name=self.collection_name,
-            query=models.Document(text=query, model=self.model),
-            using=self.vector_name,
-            limit=top_k,
-        )
-
-        scored_results = []
-        for hit in results.points:
-            payload = dict(hit.payload or {})
-            text = payload.pop("text", "")
-            node_id = payload.pop("id_", str(hit.id))
-            score = hit.score or 0.0
-
-            node = TextNode(
-                id_=node_id,
-                text=text,
-                metadata=payload,
-            )
-            scored_results.append((node, score))
-
-        return scored_results
 
     def hybrid_search(
         self,

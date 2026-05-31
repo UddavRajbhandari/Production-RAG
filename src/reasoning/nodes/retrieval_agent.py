@@ -31,8 +31,9 @@ class RetrievalAgentNode:
             search_query += " " + " ".join(state["sub_tasks"])
 
         try:
-            # 1. Execute retrieval (RRF fused results)
-            hits = self.retriever.search(search_query)
+            # 1. Execute retrieval (RRF fused results) scoped to tenant
+            tenant_id = state.get("tenant_id", "")
+            hits = self.retriever.search(search_query, tenant_id=tenant_id)
 
             # 2. Rerank results to prune candidate pool
             reranked_hits = self.reranker.rerank(search_query, hits)

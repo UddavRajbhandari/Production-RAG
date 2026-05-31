@@ -6,7 +6,6 @@ Responsibilities:
 - Temporal extraction from filename (Audit Finding #4)
 - Department mapping from filename prefix (replaces hardcoded "Corporate")
 - Section heading propagation across chunks
-- Placeholder slots for LLM-based fields (summary, keywords, HyDE questions)
 """
 
 import os
@@ -49,11 +48,6 @@ class MetadataPipeline:
                     "chunk_index": i,
                     "date": document_year,
                     "department": department,
-                    # LLM-based fields — populated in a separate enrichment pass
-                    # after ingestion when GPU/API budget is available.
-                    "summary": "",
-                    "keywords": [],
-                    "hypothetical_questions": [],
                 }
             )
 

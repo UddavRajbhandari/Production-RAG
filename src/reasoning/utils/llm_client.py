@@ -8,16 +8,13 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 try:
     from dotenv import load_dotenv
 
     load_dotenv()
 except ImportError:
-    pass
-
-if TYPE_CHECKING:
     pass
 
 import requests
