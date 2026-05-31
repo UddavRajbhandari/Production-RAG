@@ -201,7 +201,7 @@ class QdrantSparseStorage:
         Returns:
             List of TextNode objects matching the query
         """
-        filter_conditions = []
+        filter_conditions: list[models.Condition] = []
         if source_files:
             filter_conditions.append(
                 models.FieldCondition(key="source_file", match=models.MatchAny(any=list(source_files))),
