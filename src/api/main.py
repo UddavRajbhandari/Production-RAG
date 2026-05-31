@@ -204,6 +204,7 @@ app = FastAPI(
 
 # Global OpenAPI security scheme for Swagger "Authorize" button
 # This is purely for Swagger UI — actual auth is handled by verify_api_key dependency
+# which reads the HttpOnly "session" cookie rather than this header.
 from fastapi.openapi.utils import get_openapi  # noqa: E402
 
 
@@ -216,12 +217,12 @@ def _custom_openapi() -> dict:
         description=app.description,
         routes=app.routes,
     )
-    openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})["ApiKeyAuth"] = {
+    openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})["SessionCookieAuth"] = {
         "type": "apiKey",
-        "in": "header",
-        "name": "X-API-Key",
+        "in": "cookie",
+        "name": "session",
     }
-    openapi_schema.setdefault("security", []).append({"ApiKeyAuth": []})
+    openapi_schema.setdefault("security", []).append({"SessionCookieAuth": []})
     app.openapi_schema = openapi_schema
     return openapi_schema
 
@@ -236,8 +237,18 @@ _register_routes(app)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Log Pydantic validation errors for debugging."""
-    logger.error("Validation error on %s %s: %s", request.method, request.url.path, exc.errors())
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    errors = exc.errors()
+    logger.error("Validation error on %s %s: %s", request.method, request.url.path, errors)
+
+    # Convert non-serializable objects (e.g. ValueError in ctx.error) to strings
+    def _clean(e: dict) -> dict:
+        ctx = e.get("ctx")
+        if ctx:
+            e["ctx"] = {k: str(v) if not isinstance(v, str | int | float | bool | None) else v for k, v in ctx.items()}
+        return e
+
+    clean_errors = [_clean(e) for e in errors]
+    return JSONResponse(status_code=422, content={"detail": clean_errors})
 
 
 @app.get("/")
@@ -251,7 +262,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(LoggingMiddleware)
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000,https://production-rag.vercel.app"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

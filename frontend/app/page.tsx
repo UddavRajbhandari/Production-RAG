@@ -6,7 +6,7 @@ import UploadPanel from '@/components/UploadPanel';
 import ChatPanel from '@/components/ChatPanel';
 import PastQueries from '@/components/PastQueries';
 import StartupSkeleton from '@/components/StartupSkeleton';
-import { getActiveSession, getSession, createSession, setActiveSession, updateSessionMessages, updateSessionFiles, getStoredSessionApiKey, setStoredSessionApiKey, setStoredTenantId } from '@/lib/storage';
+import { getActiveSession, getSession, createSession, setActiveSession, updateSessionMessages, updateSessionFiles, getStoredTenantId, setStoredTenantId } from '@/lib/storage';
 import type { ChatMessage } from '@/types';
 
 export default function HomePage() {
@@ -65,18 +65,26 @@ export default function HomePage() {
     setSessionFiles(session.files);
   }, [backendReady]);
 
-  // Auto-init app session key on first load
+  // Auto-init app session — always call /session/init, passing stored tenant_id
+  // so the backend re-issues a cookie for the same tenant (data is preserved)
+  // across server restarts or cookie expiry.
   useEffect(() => {
     if (!backendReady) return;
-    if (getStoredSessionApiKey()) return;
 
     const init = async () => {
       try {
+        const storedTenantId = getStoredTenantId();
         const base = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await fetch(`${base}/api/v1/session/init`, { method: 'POST' });
+        const res = await fetch(`${base}/api/v1/session/init`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            storedTenantId ? { tenant_id: storedTenantId } : {}
+          ),
+        });
         if (!res.ok) return;
-        const data = await res.json() as { api_key: string; tenant_id: string };
-        setStoredSessionApiKey(data.api_key);
+        const data = await res.json() as { tenant_id: string };
         setStoredTenantId(data.tenant_id);
       } catch {
         // will retry on next page load

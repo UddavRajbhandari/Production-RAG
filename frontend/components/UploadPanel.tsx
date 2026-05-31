@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
-import { getDocuments, getApiKey } from '@/lib/api';
+import { getDocuments } from '@/lib/api';
 import type { DocumentInfo } from '@/types';
 
 interface UploadedFile {
@@ -81,12 +81,10 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
       formData.append('file', file);
 
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
         const response = await fetch(
-          `${API_BASE}/api/v1/ingest/file`,
+          '/api/ingest/file',
           {
             method: 'POST',
-            headers: { 'X-API-Key': getApiKey() },
             body: formData,
           }
         );

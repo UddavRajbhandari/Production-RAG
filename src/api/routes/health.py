@@ -65,7 +65,7 @@ def _get_llm_mode() -> str:
     return "none"
 
 
-_HEALTH_CHECK_TIMEOUT = 5  # seconds
+_HEALTH_CHECK_TIMEOUT = 15  # seconds (increased for Neon cold starts)
 _HEALTH_CACHE_TTL = 30  # seconds — serve cached results within this window
 
 

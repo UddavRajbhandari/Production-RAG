@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MessageSquare, Settings } from 'lucide-react';
@@ -12,6 +13,11 @@ const navItems = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  useEffect(() => {
+    setHasApiKey(!!localStorage.getItem('openrouter_api_key'));
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background-surface/95 backdrop-blur-sm">
@@ -31,11 +37,12 @@ export default function Navbar() {
         <nav className="flex items-center gap-1">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
+            const isSettings = href === '/settings';
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-1.5 rounded-input px-3 py-2 text-xs font-medium transition-all duration-150 ${
+                className={`relative flex items-center gap-1.5 rounded-input px-3 py-2 text-xs font-medium transition-all duration-150 ${
                   isActive
                     ? 'bg-accent-primary-muted text-accent-primary'
                     : 'text-text-secondary hover:bg-background-muted hover:text-text-primary'
@@ -43,6 +50,9 @@ export default function Navbar() {
               >
                 <Icon size={14} strokeWidth={1.5} />
                 <span className="hidden sm:inline">{label}</span>
+                {isSettings && !hasApiKey && (
+                  <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-status-warning animate-pulse" />
+                )}
               </Link>
             );
           })}

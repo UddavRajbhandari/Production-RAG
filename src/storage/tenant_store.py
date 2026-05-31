@@ -100,3 +100,10 @@ class TenantStore:
             return None
         finally:
             session.close()
+
+    def tenant_exists(self, tenant_id: str) -> bool:
+        session = self.Session()
+        try:
+            return bool(session.query(TenantKey).filter(TenantKey.tenant_id == tenant_id).first())
+        finally:
+            session.close()

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Trash2, CheckCircle2, AlertCircle, Loader2, RefreshCw, Server, Cpu, Database, Brain, Wifi, HardDrive, Wrench } from 'lucide-react';
+import { Eye, EyeOff, Trash2, CheckCircle2, AlertCircle, Loader2, RefreshCw, Server, Cpu, Database, Brain, Wifi, HardDrive, Wrench, Copy, ClipboardPaste } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { checkHealth } from '@/lib/api';
-import { getStoredApiKey, setStoredApiKey, clearStoredApiKey, getStoredTenantId, getStoredSessionApiKey, setStoredSessionApiKey, setStoredTenantId } from '@/lib/storage';
+import { getStoredApiKey, setStoredApiKey, clearStoredApiKey, getStoredTenantId, setStoredTenantId } from '@/lib/storage';
 import type { HealthStatus } from '@/types';
 
 export default function SettingsPage() {
@@ -14,8 +14,11 @@ export default function SettingsPage() {
   const [cleared, setCleared] = useState(false);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
-  const [sessionKey, setSessionKey] = useState('');
   const [tenantId, setTenantId] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [restoreId, setRestoreId] = useState('');
+  const [restored, setRestored] = useState(false);
+  const [autoCopied, setAutoCopied] = useState(false);
 
   useEffect(() => {
     setApiKey(getStoredApiKey());
@@ -52,20 +55,64 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    setSessionKey(getStoredSessionApiKey());
-    setTenantId(getStoredTenantId());
+    const id = getStoredTenantId();
+    setTenantId(id);
+    if (id && !localStorage.getItem('tenant_id_copied')) {
+      navigator.clipboard.writeText(id).then(() => {
+        localStorage.setItem('tenant_id_copied', 'true');
+        setAutoCopied(true);
+        setTimeout(() => setAutoCopied(false), 4000);
+      }).catch(() => {});
+    }
   }, []);
 
   const handleReInitSession = async () => {
     try {
+      const storedTenantId = getStoredTenantId();
       const base = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${base}/api/v1/session/init`, { method: 'POST' });
+      const res = await fetch(`${base}/api/v1/session/init`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          storedTenantId ? { tenant_id: storedTenantId } : {}
+        ),
+      });
       if (!res.ok) return;
-      const data = await res.json() as { api_key: string; tenant_id: string };
-      setStoredSessionApiKey(data.api_key);
+      const data = await res.json() as { tenant_id: string };
       setStoredTenantId(data.tenant_id);
-      setSessionKey(data.api_key);
       setTenantId(data.tenant_id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCopyTenantId = () => {
+    if (!tenantId) return;
+    navigator.clipboard.writeText(tenantId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleRestoreTenant = async () => {
+    const trimmed = restoreId.trim();
+    if (!trimmed) return;
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${base}/api/v1/session/init`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: trimmed }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { tenant_id: string };
+      setStoredTenantId(data.tenant_id);
+      setTenantId(data.tenant_id);
+      setRestoreId('');
+      setRestored(true);
+      setTimeout(() => setRestored(false), 3000);
     } catch {
       // ignore
     }
@@ -181,26 +228,67 @@ export default function SettingsPage() {
                 <h2 className="font-display text-base font-semibold text-text-primary">
                   Session
                 </h2>
-                <p className="text-xs text-text-muted">App API key and tenant isolation</p>
+                <p className="text-xs text-text-muted">Your tenant ID — save this to restore your documents later</p>
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="rounded-input border border-border bg-background-muted p-3">
+              <div className="rounded-card border border-border bg-background-muted p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-text-muted">Tenant ID</span>
-                  <span className="text-xs font-mono font-medium text-accent-primary">
-                    {tenantId || '—'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleCopyTenantId}
+                      className="rounded p-1 text-text-muted transition-colors hover:bg-background-surface hover:text-accent-primary"
+                      title="Copy tenant ID"
+                      aria-label="Copy tenant ID"
+                    >
+                      {copied ? <CheckCircle2 size={13} className="text-status-success" /> : <Copy size={13} />}
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xs text-text-muted">API Key</span>
-                  <span className="text-xs font-mono text-text-secondary">
-                    {sessionKey
-                      ? `${sessionKey.slice(0, 12)}...${sessionKey.slice(-4)}`
-                      : '—'}
-                  </span>
+                <div className="mt-2 break-all font-mono text-[13px] font-medium text-accent-primary">
+                  {tenantId || '—'}
                 </div>
+                <p className="mt-2 text-[10px] text-text-muted">
+                  Copy this ID. If you lose your session (clear cookies, server restart, redeploy),
+                  paste it below to reclaim all your uploaded documents.
+                </p>
+                {autoCopied && (
+                  <p className="mt-2 animate-fade-in text-xs text-status-success">
+                    <CheckCircle2 size={11} className="mr-1 inline" />
+                    Copied to clipboard — save this to restore your data
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-card border border-border bg-background-muted p-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  Restore Previous Tenant
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={restoreId}
+                    onChange={(e) => setRestoreId(e.target.value)}
+                    placeholder="Paste saved tenant_id here..."
+                    className="min-w-0 flex-1 rounded-input border border-border bg-background-surface px-3 py-2 font-mono text-[12px] text-text-primary placeholder:text-text-muted focus:border-accent-primary/50 focus:outline-none transition-colors"
+                  />
+                  <button
+                    onClick={handleRestoreTenant}
+                    disabled={!restoreId.trim()}
+                    className="flex shrink-0 items-center gap-1.5 rounded-input bg-accent-primary px-3 py-2 text-xs font-semibold text-background-primary transition-all hover:opacity-90 disabled:opacity-40"
+                  >
+                    <ClipboardPaste size={12} />
+                    Restore
+                  </button>
+                </div>
+                {restored && (
+                  <p className="mt-2 text-xs text-status-success animate-fade-in">
+                    <CheckCircle2 size={11} className="mr-1 inline" />
+                    Tenant restored — your documents should now be available
+                  </p>
+                )}
               </div>
 
               <button
@@ -208,11 +296,12 @@ export default function SettingsPage() {
                 className="flex items-center gap-1.5 rounded-input border border-border px-4 py-2 text-xs font-medium text-text-secondary transition-all hover:bg-background-muted hover:text-text-primary"
               >
                 <RefreshCw size={12} />
-                Re-initialize Session
+                Re-issue Session Cookie
               </button>
 
               <p className="text-[10px] text-text-muted">
-                Session is automatically created on first visit. Re-initialize if you need a new API key or tenant ID.
+                Click "Re-issue" if documents disappeared after a server restart. This refreshes
+                your session cookie while keeping your existing tenant and documents.
               </p>
             </div>
           </section>
