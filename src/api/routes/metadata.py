@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from src.api.models import (
     MetadataChunkResponse,
@@ -34,7 +34,10 @@ def get_neon_storage() -> NeonStorage:
 
 
 @router.post("/metadata/query", response_model=MetadataQueryResponse)
-async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse:
+async def query_metadata(
+    req: Request,
+    body: MetadataQueryRequest,
+) -> MetadataQueryResponse:
     """
     Query the relational metadata database.
 
@@ -46,6 +49,7 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
     - section_heading
     """
     try:
+        tenant_id = getattr(req.state, "tenant_id", "")
         neon = get_neon_storage()
         session = neon.Session()
 
@@ -55,15 +59,15 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
         from src.storage.neon_storage import ChunkMetadata
 
         # Base count query
-        base_filter = []
-        if request.department:
-            base_filter.append(ChunkMetadata.department == request.department)
-        if request.year:
-            base_filter.append(ChunkMetadata.date == request.year)
-        if request.source_file:
-            base_filter.append(ChunkMetadata.source_file.like(f"%{request.source_file}%"))
-        if request.domain_tag:
-            base_filter.append(ChunkMetadata.domain_tag == request.domain_tag)
+        base_filter = [ChunkMetadata.tenant_id == tenant_id]
+        if body.department:
+            base_filter.append(ChunkMetadata.department == body.department)
+        if body.year:
+            base_filter.append(ChunkMetadata.date == body.year)
+        if body.source_file:
+            base_filter.append(ChunkMetadata.source_file.like(f"%{body.source_file}%"))
+        if body.domain_tag:
+            base_filter.append(ChunkMetadata.domain_tag == body.domain_tag)
 
         # Get total count
         count_query = select(func.count(ChunkMetadata.id))
@@ -78,7 +82,7 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
             select_query = select_query.where(and_(*base_filter))
 
         # Apply offset and limit
-        select_query = select_query.offset(request.offset or 0).limit(request.limit or 50)
+        select_query = select_query.offset(body.offset or 0).limit(body.limit or 50)
 
         results = session.execute(select_query).scalars().all()
 
@@ -103,8 +107,8 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
 
         return MetadataQueryResponse(
             total=total if total is not None else 0,
-            offset=request.offset or 0,
-            limit=request.limit or 50,
+            offset=body.offset or 0,
+            limit=body.limit or 50,
             chunks=chunks,
         )
 
@@ -114,19 +118,22 @@ async def query_metadata(request: MetadataQueryRequest) -> MetadataQueryResponse
 
 
 @router.get("/metadata/stats")
-async def get_metadata_stats() -> dict[str, Any]:
+async def get_metadata_stats(request: Request) -> dict[str, Any]:
     """
     Get statistics about the metadata database.
 
     Returns counts by department, year, and domain_tag.
     """
     try:
+        tenant_id = getattr(request.state, "tenant_id", "")
         neon = get_neon_storage()
         session = neon.Session()
 
-        from sqlalchemy import func, select
+        from sqlalchemy import and_, func, select
 
         from src.storage.neon_storage import ChunkMetadata
+
+        base_filter = [ChunkMetadata.tenant_id == tenant_id]
 
         stats: dict[str, Any] = {
             "total_chunks": 0,
@@ -136,23 +143,29 @@ async def get_metadata_stats() -> dict[str, Any]:
         }
 
         # Total count
-        stats["total_chunks"] = session.execute(select(func.count(ChunkMetadata.id))).scalar()
+        stats["total_chunks"] = session.execute(select(func.count(ChunkMetadata.id)).where(and_(*base_filter))).scalar()
 
         # Department breakdown
         dept_results = session.execute(
-            select(ChunkMetadata.department, func.count(ChunkMetadata.id)).group_by(ChunkMetadata.department)
+            select(ChunkMetadata.department, func.count(ChunkMetadata.id))
+            .where(and_(*base_filter))
+            .group_by(ChunkMetadata.department)
         ).all()
         stats["by_department"] = {str(r[0] or "unknown"): r[1] for r in dept_results}
 
         # Year breakdown
         year_results = session.execute(
-            select(ChunkMetadata.date, func.count(ChunkMetadata.id)).group_by(ChunkMetadata.date)
+            select(ChunkMetadata.date, func.count(ChunkMetadata.id))
+            .where(and_(*base_filter))
+            .group_by(ChunkMetadata.date)
         ).all()
         stats["by_year"] = {str(r[0] or "unknown"): r[1] for r in year_results}
 
         # Domain breakdown
         domain_results = session.execute(
-            select(ChunkMetadata.domain_tag, func.count(ChunkMetadata.id)).group_by(ChunkMetadata.domain_tag)
+            select(ChunkMetadata.domain_tag, func.count(ChunkMetadata.id))
+            .where(and_(*base_filter))
+            .group_by(ChunkMetadata.domain_tag)
         ).all()
         stats["by_domain"] = {str(r[0] or "unknown"): r[1] for r in domain_results}
 
@@ -166,18 +179,24 @@ async def get_metadata_stats() -> dict[str, Any]:
 
 
 @router.get("/metadata/departments")
-async def get_departments() -> list[str]:
+async def get_departments(request: Request) -> list[str]:
     """Get list of available departments."""
     try:
+        tenant_id = getattr(request.state, "tenant_id", "")
         neon = get_neon_storage()
         session = neon.Session()
 
-        from sqlalchemy import select
+        from sqlalchemy import and_, select
 
         from src.storage.neon_storage import ChunkMetadata
 
         results = (
-            session.execute(select(ChunkMetadata.department).where(ChunkMetadata.department.isnot(None)).distinct())
+            session.execute(
+                select(ChunkMetadata.department)
+                .where(ChunkMetadata.department.isnot(None))
+                .where(and_(ChunkMetadata.tenant_id == tenant_id))
+                .distinct()
+            )
             .scalars()
             .all()
         )
@@ -192,7 +211,7 @@ async def get_departments() -> list[str]:
 
 
 @router.get("/metadata/documents")
-async def get_documents() -> list[dict[str, Any]]:
+async def get_documents(request: Request) -> list[dict[str, Any]]:
     """
     Get list of source documents with chunk counts.
 
@@ -200,10 +219,11 @@ async def get_documents() -> list[dict[str, Any]]:
     along with their chunk counts.
     """
     try:
+        tenant_id = getattr(request.state, "tenant_id", "")
         neon = get_neon_storage()
         session = neon.Session()
 
-        from sqlalchemy import func, select
+        from sqlalchemy import and_, func, select
 
         from src.storage.neon_storage import ChunkMetadata
 
@@ -215,6 +235,7 @@ async def get_documents() -> list[dict[str, Any]]:
                 func.min(ChunkMetadata.department),
             )
             .where(ChunkMetadata.source_file.isnot(None))
+            .where(and_(ChunkMetadata.tenant_id == tenant_id))
             .group_by(ChunkMetadata.source_file)
             .order_by(ChunkMetadata.source_file)
         ).all()

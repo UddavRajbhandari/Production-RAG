@@ -24,11 +24,12 @@ class QueryTracker:
         self._lock = threading.Lock()
         self._active: dict[str, dict[str, Any]] = {}
 
-    def start(self, request_id: str, query: str) -> None:
+    def start(self, request_id: str, query: str, tenant_id: str = "") -> None:
         """Register a query as in-flight."""
         with self._lock:
             self._active[request_id] = {
                 "query": query[:200],
+                "tenant_id": tenant_id,
                 "start_time": time.time(),
                 "node": "",
             }
@@ -44,10 +45,14 @@ class QueryTracker:
         with self._lock:
             self._active.pop(request_id, None)
 
-    def get_active(self) -> dict[str, dict[str, Any]]:
-        """Return snapshot of all in-flight queries."""
+    def get_active(self, tenant_id: str = "") -> dict[str, dict[str, Any]]:
+        """Return snapshot of all in-flight queries, optionally scoped to a tenant."""
         now = time.time()
         with self._lock:
+            if tenant_id:
+                items = [(rid, info) for rid, info in self._active.items() if info.get("tenant_id") == tenant_id]
+            else:
+                items = list(self._active.items())
             return {
                 rid: {
                     "query": info["query"],
@@ -55,7 +60,7 @@ class QueryTracker:
                     "node": info["node"],
                     "stale": (now - info["start_time"]) > _STALE_TIMEOUT_S,
                 }
-                for rid, info in self._active.items()
+                for rid, info in items
             }
 
     def get_stale(self) -> list[str]:
@@ -64,9 +69,14 @@ class QueryTracker:
         with self._lock:
             return [rid for rid, info in self._active.items() if (now - info["start_time"]) > _STALE_TIMEOUT_S]
 
-    def force_clear(self, request_id: str) -> bool:
-        """Forcefully remove a query from tracking. Returns True if it existed."""
+    def force_clear(self, request_id: str, tenant_id: str = "") -> bool:
+        """Forcefully remove a query from tracking. Returns True if it existed.
+
+        Only removes if the request belongs to the given tenant (if tenant_id provided).
+        """
         with self._lock:
+            if tenant_id and self._active.get(request_id, {}).get("tenant_id") != tenant_id:
+                return False
             existed = request_id in self._active
             self._active.pop(request_id, None)
             return existed
