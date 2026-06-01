@@ -50,7 +50,7 @@ async def init_session(request: Request, response: Response, body: InitSessionRe
         key="session",
         value=token,
         httponly=True,
-        samesite="lax",
+        samesite="none" if is_secure else "lax",
         secure=is_secure,
         max_age=86400,
         path="/",

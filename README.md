@@ -181,9 +181,10 @@ FastAPI application with full middleware stack, rate limiting, authentication, a
 
 | Layer | File | Role |
 |---|---|---|
-| **Main** | `main.py` | App bootstrap, lifespan management, middleware registration, embedding model pre-loading |
-| **Routes** | `routes/` | `health.py` (liveness + component health), `session.py` (multi-tenant provisioning), `query.py` (standard + SSE streaming + retrieve-only), `ingest.py`, `metadata.py` |
-| **Middleware** | `middleware/` | `auth.py` (API key verification), `rate_limit.py` (per-key rate limiting via SlowAPI), `logging.py` (structured JSON request logging), `metrics.py` (Prometheus metrics) |
+| **Main** | `main.py` | App bootstrap, lifespan management, middleware registration, embedding model pre-loading, Sentry initialization |
+| **Routes** | `routes/` | `health.py` (liveness + component health), `session.py` (tenant session provisioning via HttpOnly cookie), `query.py` (standard + SSE streaming + retrieve-only), `ingest.py`, `metadata.py` |
+| **Middleware** | `middleware/` | `auth.py` (session cookie verification), `session.py` (HMAC cookie signing), `rate_limit.py` (per-tenant rate limiting via SlowAPI), `logging.py` (structured JSON request logging), `metrics.py` (Prometheus metrics), `body_cache.py` (ASGI body buffering) |
+| **Guardrails** | `guardrails/` | `pii_mask.py` (PII redaction), `semantic_cache.py` (embedding-similarity cache), `token_budget.py` (token counting + budget enforcement) |
 | **Models** | `models/models.py` | Pydantic schemas for all request/response types, Settings model with env var binding |
 | **Query Tracker** | `query_tracker.py` | Thread-safe in-flight query tracking with stale detection (5min timeout) and force-clear debug endpoint |
 
@@ -193,7 +194,7 @@ FastAPI application with full middleware stack, rate limiting, authentication, a
 |---|---|---|---|---|
 | `/api/v1/health/live` | GET | No | Lightweight liveness probe |
 | `/api/v1/health` | GET | No | Full component health (cached 30s) |
-| `/api/v1/session/init` | POST | No | Provision new API key + tenant ID for multi-tenant isolation |
+| `/api/v1/session/init` | POST | No | Create or restore a tenant session (HttpOnly cookie) |
 | `/api/v1/query` | POST | Yes | Standard query with sources |
 | `/api/v1/query/stream` | POST | Yes | SSE streaming query (50-char chunks + metadata event) |
 | `/api/v1/query/retrieve` | POST | Yes | Retrieve-only (no LLM call) |
@@ -245,8 +246,10 @@ A standalone Next.js 14 (App Router) application with TypeScript and Tailwind CS
 | Route | File | Description |
 |---|---|---|
 | `/` | `app/page.tsx` | Main 3-panel layout: left sidebar (Upload + Past Queries), center (Chat Panel), sidebar toggle |
-| `/settings` | `app/settings/page.tsx` | LLM API key management, provider chain display, system component health |
-| `/api/query` | `app/api/query/route.ts` | Next.js Route Handler that proxies to backend with SSE support |
+| `/settings` | `app/settings/page.tsx` | LLM API key management, tenant ID display/restore, system component health |
+| `/api/query` | `app/api/query/route.ts` | Next.js Route Handler that proxies streaming queries to backend |
+| `/api/ingest/file` | `app/api/ingest/file/route.ts` | Upload proxy — bypasses HF Spaces edge proxy 4MB body limit |
+| `/api/v1/[...path]` | `app/api/v1/[...path]/route.ts` | Catch-all proxy for all `/api/v1/*` requests (local dev — replaces rewrite) |
 
 ### Components
 
@@ -263,7 +266,7 @@ A standalone Next.js 14 (App Router) application with TypeScript and Tailwind CS
 
 Two separate key systems exist:
 
-1. **App Session Key** — Auto-provisioned on first visit. The frontend calls `POST /api/v1/session/init` which creates a unique `api_key` + `tenant_id` stored in `localStorage`. This key is sent as the `X-API-Key` header on all API requests for tenant-scoped data isolation.
+1. **Tenant Session** — Auto-provisioned on first visit. The frontend calls `POST /api/v1/session/init` which creates a unique tenant and sets an HttpOnly `session` cookie. The cookie is sent automatically on all subsequent requests for tenant-scoped data isolation.
 
 2. **LLM Provider Key** (optional) — Your OpenRouter API key (`sk-or-v1-...`) is stored under `localStorage` key `openrouter_api_key` and sent per-request in the `llm_api_key` field. Never persisted on the server. Manage it on the Settings page.
 
@@ -272,11 +275,14 @@ Two separate key systems exist:
 ```
 frontend/
 ├── app/
-│   ├── layout.tsx          # Root layout with ThemeProvider
-│   ├── page.tsx            # Home page (3-panel layout)
-│   ├── globals.css         # Global styles + skeleton shimmer animation
-│   ├── settings/page.tsx   # Settings page
-│   └── api/query/route.ts  # API proxy route
+│   ├── layout.tsx            # Root layout with ThemeProvider
+│   ├── page.tsx              # Home page (3-panel layout)
+│   ├── globals.css           # Global styles + skeleton shimmer animation
+│   ├── settings/page.tsx     # Settings page
+│   └── api/
+│       ├── query/route.ts    # SSE proxy for streaming queries
+│       ├── ingest/file/route.ts  # Upload proxy (bypasses edge body limit)
+│       └── v1/[...path]/route.ts # Catch-all proxy for all /api/v1/* requests
 ├── components/
 │   ├── ChatPanel.tsx
 │   ├── Navbar.tsx
@@ -286,7 +292,6 @@ frontend/
 │   └── UploadPanel.tsx
 ├── lib/
 │   ├── api.ts              # Client-side API functions
-│   ├── api-server.ts       # Server-side API functions (for Route Handler)
 │   └── storage.ts          # localStorage session + API key management
 ├── providers/
 │   └── ThemeProvider.tsx   # Dark/light theme context
@@ -313,31 +318,35 @@ frontend/
 ├── .env.example                     ← Environment variable template
 ├── .pre-commit-config.yaml          ← Pre-commit hooks
 ├── .secrets.baseline                ← detect-secrets baseline
+├── .dockerignore
+├── skills-lock.json
+├── stress_test_report.json
 │
 ├── config/
 │   └── settings.yaml                ← Central application configuration
 │
 ├── src/
 │   ├── api/                         ← FastAPI backend
-│   │   ├── main.py                  ← App entry point
+│   │   ├── main.py                  ← App entry point, lifespan, Sentry init
+│   │   ├── limiter.py               ← Rate limiter configuration
 │   │   ├── query_tracker.py         ← In-flight query monitoring
-│   │   ├── guardrails/              ← PII, cache, token budget
-│   │   ├── middleware/              ← Auth, logging, metrics, rate limit
-│   │   ├── models/models.py         ← Pydantic schemas + Settings
-│   │   └── routes/                  ← Health, query, ingest, metadata
-│   ├── evaluation/                  ← RAGAS evaluation
-│   ├── ingestion/                   ← Parsing, chunking, metadata
-│   ├── reasoning/                   ← LangGraph pipeline + LLM client
+│   │   ├── guardrails/              ← PII mask, semantic cache, token budget
+│   │   ├── middleware/              ← Auth (cookie), body cache, logging, metrics, rate limit, session
+│   │   ├── models/models.py        ← Pydantic schemas + Settings
+│   │   └── routes/                  ← Health, session, query, ingest, metadata
+│   ├── evaluation/                  ← RAGAS evaluation + ground truth validation
+│   ├── ingestion/                   ← Parsing, structure analysis, chunking, metadata
+│   ├── reasoning/                   ← LangGraph pipeline (8 nodes) + LLM client
 │   │   ├── pipeline.py              ← StateGraph definition
 │   │   ├── state.py                 ← RAGState TypedDict
 │   │   ├── nodes/                   ← 8 graph nodes
-│   │   └── utils/                   ← LLM client, config loader
-│   ├── retrieval/                   ← Hybrid search + reranker
-│   ├── storage/                     ← Qdrant, BM25, Neon/Postgres
+│   │   └── utils/                   ← LLM client, config loader, JSON parser
+│   ├── retrieval/                   ← Hybrid search + ONNX reranker
+│   ├── storage/                     ← Qdrant, BM25 (cloud/local), Neon/Postgres, tenant store
 │   └── stress_testing/              ← Adversarial testing suite
 │
-├── frontend/                        ← Next.js web application
-│   ├── app/                         ← App Router pages + API route
+├── frontend/                        ← Next.js 14 web application
+│   ├── app/                         ← App Router pages + API proxy routes
 │   ├── components/                  ← React components
 │   ├── lib/                         ← API client + storage
 │   ├── providers/                   ← Theme provider
@@ -356,17 +365,29 @@ frontend/
 │   ├── load_test.py                 ← Concurrent load testing
 │   ├── capture_trace.py             ← Capture LangGraph trace
 │   ├── validate_ragas_regression.py ← Validate RAGAS metric regression
+│   ├── export_reranker_onnx.py      ← Export ONNX reranker from PyTorch
+│   ├── backfill_qdrant_tenant.py    ← Backfill tenant_id on existing chunks
+│   ├── check_neon_tenant.py         ← Verify tenant isolation in Neon
+│   ├── generate_secrets_baseline.py ← Update .secrets.baseline
+│   └── run_ci_local.sh              ← Run CI pipeline locally
 │
 ├── data/
 │   └── ground_truth/                ← 68-pair gold evaluation set
 │
 ├── docs/                            ← Phase reports, runbooks, plans
 │   ├── ops/RUNBOOK.md               ← Operational runbook
+│   ├── GIT_WORKFLOW.md              ← Git branching strategy
+│   ├── LATENCY_LOG.md               ← Verified wall-clock timings
+│   ├── Project_Structure.md         ← Detailed file map
+│   ├── pre-phase/                   ← Audit and ground truth planning
 │   ├── phase1to3/                   ← Post-remediation technical report
 │   ├── phase4 and 5/                ← Reasoning engine report
 │   ├── phase 6/                     ← RAGAS comparison report
 │   ├── phase 7/                     ← Stress testing report
-│   └── phase 8/                     ← Deployment + guardrails docs
+│   └── phase 8/                     ← Deployment, guardrails, API docs
+│
+├── docker/
+│   └── entrypoint.sh                ← Docker container entrypoint
 │
 └── .github/workflows/               ← CI/CD pipeline definitions
     ├── ci.yml                       ← Lint, typecheck, test
@@ -429,8 +450,11 @@ cd frontend
 # 2. Create environment file
 cp .env.local.example .env.local
 
-# 3. Edit .env.local — the API URL should match your backend
-#    NEXT_PUBLIC_API_URL=http://localhost:7860
+# 3. Edit .env.local — set the backend URL for the API proxy
+#    API_PROXY_TARGET=http://localhost:7860
+#
+#    For Vercel production (optional, bypasses 4.5MB body limit for uploads):
+#    NEXT_PUBLIC_BACKEND_URL=https://udhov-production-rag-backend.hf.space
 
 # 4. Install dependencies
 npm install
@@ -527,7 +551,9 @@ Central configuration in `config/settings.yaml` controls all major subsystems:
 - `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY` — LLM provider keys
 - `QDRANT_URL`, `QDRANT_API_KEY` — Qdrant Cloud connection
 - `DATABASE_URL` — Neon/Postgres connection string
-- `API_KEY` — Legacy fallback API key (multi-tenant auth via `TenantStore` is primary)
+- `SESSION_SECRET` — HMAC key for signing session cookies (auto-generated if unset)
+- `SENTRY_DSN` — Sentry error tracking DSN (optional, Sentry disabled without it)
+- `ALLOWED_ORIGINS` — CORS origins (comma-separated, default: `localhost:3000,localhost:8000,production-rag.vercel.app`)
 - `RATE_LIMIT_PER_MINUTE` — Global rate limit (default: 3)
 - `LLM_PROVIDER` — Explicit provider override
 
@@ -557,6 +583,19 @@ A `/metrics` endpoint (`src/api/middleware/metrics.py`) exposes Prometheus-forma
 | `GET /api/v1/health` | 30s | Full component health (Qdrant, BM25, Postgres, LLM, auth) |
 | `GET /api/v1/health/ready` | None | Readiness check for Kubernetes-style deployments |
 
+### Sentry Error Tracking
+
+Sentry is initialized during application startup in `src/api/main.py` when the `SENTRY_DSN` environment variable is set. It captures unhandled exceptions, request-level performance traces, and WARNING+ log events.
+
+| Setting | Value |
+|---|---|
+| SDK | `sentry-sdk` with `FastApiIntegration` |
+| Trace sample rate | 10% (`traces_sample_rate=0.1`) |
+| PII capture | Disabled (`send_default_pii=False`) |
+| Activation | Set `SENTRY_DSN` env var — Sentry auto-initializes on next restart |
+
+Without `SENTRY_DSN`, Sentry is silently skipped (logged at startup as `Sentry disabled (no SENTRY_DSN)`).
+
 ### Structured Logging
 
 All API requests are logged as JSON via `LoggingMiddleware` with fields:
@@ -574,23 +613,24 @@ All API requests are logged as JSON via `LoggingMiddleware` with fields:
 Rate limiting is implemented via **SlowAPI** middleware with two tiers:
 
 | Scenario | Limit | Mechanism |
-|---|---|---|
-| Requests using the X-API-Key session key | 3 concurrent queries max | Concurrent gate in `query.py` using `QueryTracker.active_count()` |
+|---|---|---|---|
+| Requests with a tenant session | 3 concurrent queries max | Concurrent gate in `query.py` using `QueryTracker.active_count()` |
 | Requests with a user-provided LLM key | 10 concurrent queries max (server safety cap) | Same gate, higher threshold when `llm_api_key` is present |
-| Non-query endpoints (health, metadata) | 3 requests per minute per API key | SlowAPI global `Limiter` with per-key bucketing |
+| Non-query endpoints (health, metadata) | 3 requests per minute per tenant | SlowAPI global `Limiter` with per-tenant bucketing |
 
-The rate limit key function (`src/api/middleware/rate_limit.py`) uses the `X-API-Key` header when available, falling back to the client IP address. Query routes are exempted from SlowAPI's global limit and rely on the concurrent gate instead, ensuring LLM-key requests aren't artificially restricted.
+The rate limit key function (`src/api/middleware/rate_limit.py`) uses the `session` cookie (first 16 chars) when available, falling back to the client IP address. Query routes are exempted from SlowAPI's global limit and rely on the concurrent gate instead, ensuring LLM-key requests aren't artificially restricted.
 
 ### Authentication & Multi-Tenant Isolation
 
-API authentication uses a database-backed `TenantStore` (`src/storage/tenant_store.py`):
+API authentication uses an HMAC-signed HttpOnly session cookie via `SessionMiddleware` (`src/api/middleware/session.py`):
 
-- **Header**: `X-API-Key: <key>` sent with every request
+- **Cookie**: `session=<HMAC-token>` set on first `POST /api/v1/session/init`
 - **Scope**: Required for all endpoints except `/api/v1/health/live`, `/api/v1/health`, and `/api/v1/session/init`
-- **Flow**: `verify_api_key` middleware reads `X-API-Key`, resolves via `TenantStore.lookup_tenant(api_key)` → `tenant_id`, attaches `tenant_id` to `request.state`
+- **Flow**: `verify_auth` middleware reads the `session` cookie, verifies the HMAC signature, extracts `tenant_id`, and attaches it to `request.state`
 - **Data isolation**: Every chunk is tagged with `tenant_id` during ingestion; all retrieval queries filter by `tenant_id` via Qdrant `FieldCondition` and BM25 local filtering
-- **Session provisioning**: `POST /api/v1/session/init` creates a new tenant + API key pair. The frontend auto-calls this on first visit and stores the key in `localStorage`
-- **401 handling**: Invalid/missing keys return 401 Unauthorized
+- **Session provisioning**: `POST /api/v1/session/init` creates a new or restores an existing tenant. The frontend auto-calls this on first visit with a stored `tenant_id` for persistence across restarts
+- **401 handling**: Missing or invalid cookies return 401 Unauthorized
+- **Settings page**: Shows the tenant ID with copy button and a "Restore Tenant" input to recover from saved backup
 
 ### Latency Profiling
 

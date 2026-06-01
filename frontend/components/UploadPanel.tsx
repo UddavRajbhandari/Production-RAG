@@ -5,6 +5,12 @@ import { Upload, FileText, Loader2, CheckCircle, AlertCircle, ChevronDown, Chevr
 import { getDocuments } from '@/lib/api';
 import type { DocumentInfo } from '@/types';
 
+// Upload directly to backend when NEXT_PUBLIC_BACKEND_URL is set (production).
+// This bypasses Vercel's 4.5MB Serverless Function body limit for large files.
+// The session cookie uses SameSite=None (on HTTPS) so the browser sends it
+// cross-origin with credentials: 'include'.
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+
 interface UploadedFile {
   name: string;
   status: 'pending' | 'success' | 'error';
@@ -84,11 +90,16 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
       formData.append('file', file);
 
       try {
+        const uploadUrl = BACKEND_URL
+          ? `${BACKEND_URL}/api/v1/ingest/file`
+          : '/api/ingest/file';
+
         const response = await fetch(
-          '/api/ingest/file',
+          uploadUrl,
           {
             method: 'POST',
             body: formData,
+            credentials: BACKEND_URL ? 'include' as const : undefined,
           }
         );
 
