@@ -154,18 +154,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _storage_initialized
     _log_load("Lifespan started")
 
-    # Sentry disabled — import was blocking on Render's infrastructure.
-    # To re-enable: uncomment below and set SENTRY_DSN env var.
-    # sentry_dsn = os.getenv("SENTRY_DSN")
-    # if sentry_dsn:
-    #     try:
-    #         import sentry_sdk
-    #         from sentry_sdk.integrations.fastapi import FastApiIntegration
-    #         from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration
-    #         sentry_sdk.init(dsn=sentry_dsn, integrations=[FastApiIntegration(), SentryLoggingIntegration()])
-    #     except Exception:
-    #         pass
-    _log_load("Sentry disabled")
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.fastapi import FastApiIntegration
+            from sentry_sdk.integrations.logging import LoggingIntegration as SentryLoggingIntegration
+
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[
+                    FastApiIntegration(),
+                    SentryLoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
+                ],
+                traces_sample_rate=0.1,
+                send_default_pii=False,
+            )
+            _log_load("Sentry initialized")
+        except Exception:
+            pass
+    else:
+        _log_load("Sentry disabled (no SENTRY_DSN)")
 
     try:
         app.state.hybrid_retriever = None
