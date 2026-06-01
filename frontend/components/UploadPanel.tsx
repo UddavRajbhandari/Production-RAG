@@ -5,11 +5,11 @@ import { Upload, FileText, Loader2, CheckCircle, AlertCircle, ChevronDown, Chevr
 import { getDocuments } from '@/lib/api';
 import type { DocumentInfo } from '@/types';
 
-// Upload directly to backend when NEXT_PUBLIC_BACKEND_URL is set (production).
-// This bypasses Vercel's 4.5MB Serverless Function body limit for large files.
-// The session cookie uses SameSite=None (on HTTPS) so the browser sends it
-// cross-origin with credentials: 'include'.
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+// Vercel free tier Serverless Functions reject bodies >4.5MB.
+// Files above this threshold are uploaded directly to the backend
+// with X-Tenant-ID header auth (session cookie won't cross domains).
+const VERCEL_BODY_LIMIT = 4 * 1024 * 1024;
 
 interface UploadedFile {
   name: string;
@@ -90,18 +90,29 @@ export default function UploadPanel({ sessionId, sessionFiles, onFilesChange }: 
       formData.append('file', file);
 
       try {
-        const uploadUrl = BACKEND_URL
+        // Small files go through the Vercel proxy (same-domain cookie auth).
+        // Large files upload directly to the backend with X-Tenant-ID header
+        // to bypass Vercel's 4.5MB Serverless Function body limit.
+        const isLarge = BACKEND_URL && file.size > VERCEL_BODY_LIMIT;
+
+        const uploadUrl = isLarge
           ? `${BACKEND_URL}/api/v1/ingest/file`
           : '/api/ingest/file';
 
-        const response = await fetch(
-          uploadUrl,
-          {
-            method: 'POST',
-            body: formData,
-            credentials: BACKEND_URL ? 'include' as const : undefined,
+        const fetchOpts: RequestInit = {
+          method: 'POST',
+          body: formData,
+        };
+
+        if (isLarge) {
+          const { getStoredTenantId } = await import('@/lib/storage');
+          const tenantId = getStoredTenantId();
+          if (tenantId) {
+            fetchOpts.headers = { 'X-Tenant-ID': tenantId };
           }
-        );
+        }
+
+        const response = await fetch(uploadUrl, fetchOpts);
 
         if (!response.ok) {
           const data = await response.json();

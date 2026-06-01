@@ -13,14 +13,36 @@ import datetime
 import logging
 import os
 import secrets
+import time
+from collections.abc import Callable
+from typing import TypeVar
 
 import yaml
 from sqlalchemy import Column, DateTime, String, create_engine, event
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from src.storage.neon_storage import Base
 
 logger = logging.getLogger(__name__)
+
+_RETRY_DELAY_S = 1.0
+_RETRY_ATTEMPTS = 3
+_FnT = TypeVar("_FnT")
+
+
+def _with_retry(fn: Callable[[], _FnT]) -> _FnT:
+    """Retry DB operation on transient OperationalError (Neon cold start)."""
+    for attempt in range(_RETRY_ATTEMPTS):
+        try:
+            return fn()
+        except OperationalError as e:
+            if attempt < _RETRY_ATTEMPTS - 1:
+                logger.warning("DB retry %d/%d after: %s", attempt + 1, _RETRY_ATTEMPTS, e)
+                time.sleep(_RETRY_DELAY_S)
+            else:
+                raise
+    raise RuntimeError("Unreachable")
 
 
 class TenantKey(Base):
@@ -78,32 +100,41 @@ class TenantStore:
         api_key = "rag_" + secrets.token_hex(32)  # pragma: allowlist secret
         tenant_id = "tnt_" + secrets.token_hex(6)
 
-        session = self.Session()
-        try:
-            session.add(TenantKey(api_key=api_key, tenant_id=tenant_id))
-            session.commit()
-            logger.info("Created tenant %s", tenant_id)
-            return api_key, tenant_id
-        except Exception:
-            session.rollback()
-            logger.error("Failed to create tenant", exc_info=True)
-            raise
-        finally:
-            session.close()
+        def _create() -> tuple[str, str]:
+            session = self.Session()
+            try:
+                session.add(TenantKey(api_key=api_key, tenant_id=tenant_id))
+                session.commit()
+                logger.info("Created tenant %s", tenant_id)
+                return api_key, tenant_id
+            except Exception:
+                session.rollback()
+                logger.error("Failed to create tenant", exc_info=True)
+                raise
+            finally:
+                session.close()
+
+        return _with_retry(_create)
 
     def lookup_tenant(self, api_key: str) -> str | None:
-        session = self.Session()
-        try:
-            row = session.get(TenantKey, api_key)
-            if row:
-                return str(row.tenant_id)
-            return None
-        finally:
-            session.close()
+        def _lookup() -> str | None:
+            session = self.Session()
+            try:
+                row = session.get(TenantKey, api_key)
+                if row:
+                    return str(row.tenant_id)
+                return None
+            finally:
+                session.close()
+
+        return _with_retry(_lookup)
 
     def tenant_exists(self, tenant_id: str) -> bool:
-        session = self.Session()
-        try:
-            return bool(session.query(TenantKey).filter(TenantKey.tenant_id == tenant_id).first())
-        finally:
-            session.close()
+        def _exists() -> bool:
+            session = self.Session()
+            try:
+                return bool(session.query(TenantKey).filter(TenantKey.tenant_id == tenant_id).first())
+            finally:
+                session.close()
+
+        return _with_retry(_exists)
