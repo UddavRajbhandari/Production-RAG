@@ -118,8 +118,8 @@ class TestCalculationAgentNode:
 
     def test_process_with_mock_retrieval(self, sample_rag_state: RAGState) -> None:
         with (
-            patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls,
-            patch("src.reasoning.nodes.calculation_agent.CrossEncoderReranker") as mock_rerank_cls,
+            patch("src.retrieval.hybrid_search.get_retriever") as mock_get_retriever,
+            patch("src.retrieval.reranker.get_reranker") as mock_get_reranker,
         ):
             mock_ret = MagicMock()
             mock_ret.search.return_value = [
@@ -132,12 +132,12 @@ class TestCalculationAgentNode:
                     "metadata": {"source_file": "report.pdf"},
                 }
             ]
-            mock_ret_cls.return_value = mock_ret
+            mock_get_retriever.return_value = mock_ret
             mock_rerank = MagicMock()
             mock_rerank.rerank.return_value = [
                 {"id": "1", "text": "Budget was $5 million", "metadata": {"source_file": "report.pdf"}}
             ]
-            mock_rerank_cls.return_value = mock_rerank
+            mock_get_reranker.return_value = mock_rerank
 
             sample_rag_state["query"] = "What is the total budget?"
             node = CalculationAgentNode()
@@ -152,8 +152,8 @@ class TestCalculationAgentNode:
 
     def test_process_no_numbers(self, sample_rag_state: RAGState) -> None:
         with (
-            patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls,
-            patch("src.reasoning.nodes.calculation_agent.CrossEncoderReranker") as mock_rerank_cls,
+            patch("src.retrieval.hybrid_search.get_retriever") as mock_get_retriever,
+            patch("src.retrieval.reranker.get_reranker") as mock_get_reranker,
         ):
             mock_ret = MagicMock()
             mock_ret.search.return_value = [
@@ -162,8 +162,8 @@ class TestCalculationAgentNode:
             mock_ret.expand_context.return_value = [
                 {"text": "No numbers here", "expanded_text": "No numbers here", "metadata": {"source_file": "x.pdf"}}
             ]
-            mock_ret_cls.return_value = mock_ret
-            mock_rerank_cls.return_value = MagicMock()
+            mock_get_retriever.return_value = mock_ret
+            mock_get_reranker.return_value = MagicMock()
 
             sample_rag_state["query"] = "What is the total?"
             node = CalculationAgentNode()
@@ -173,13 +173,13 @@ class TestCalculationAgentNode:
 
     def test_process_retrieval_error(self, sample_rag_state: RAGState) -> None:
         with (
-            patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls,
-            patch("src.reasoning.nodes.calculation_agent.CrossEncoderReranker") as mock_rerank_cls,
+            patch("src.retrieval.hybrid_search.get_retriever") as mock_get_retriever,
+            patch("src.retrieval.reranker.get_reranker") as mock_get_reranker,
         ):
             mock_ret = MagicMock()
             mock_ret.search.side_effect = Exception("Connection error")
-            mock_ret_cls.return_value = mock_ret
-            mock_rerank_cls.return_value = MagicMock()
+            mock_get_retriever.return_value = mock_ret
+            mock_get_reranker.return_value = MagicMock()
 
             sample_rag_state["query"] = "Total budget?"
             node = CalculationAgentNode()
@@ -190,16 +190,16 @@ class TestCalculationAgentNode:
 
     def test_process_with_subtasks(self, sample_rag_state: RAGState) -> None:
         with (
-            patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls,
-            patch("src.reasoning.nodes.calculation_agent.CrossEncoderReranker") as mock_rerank_cls,
+            patch("src.retrieval.hybrid_search.get_retriever") as mock_get_retriever,
+            patch("src.retrieval.reranker.get_reranker") as mock_get_reranker,
         ):
             mock_ret = MagicMock()
             mock_ret.search.return_value = [{"id": "1", "text": "Revenue $10m", "metadata": {"source_file": "r.pdf"}}]
             mock_ret.expand_context.return_value = [
                 {"text": "Revenue $10m", "expanded_text": "Revenue $10m", "metadata": {"source_file": "r.pdf"}}
             ]
-            mock_ret_cls.return_value = mock_ret
-            mock_rerank_cls.return_value = MagicMock()
+            mock_get_retriever.return_value = mock_ret
+            mock_get_reranker.return_value = MagicMock()
 
             sample_rag_state["query"] = "What is the total revenue?"
             sample_rag_state["sub_tasks"] = ["Find revenue figures"]
@@ -210,14 +210,14 @@ class TestCalculationAgentNode:
 
     def test_latency_tracking(self, sample_rag_state: RAGState) -> None:
         with (
-            patch("src.reasoning.nodes.calculation_agent.HybridRetriever") as mock_ret_cls,
-            patch("src.reasoning.nodes.calculation_agent.CrossEncoderReranker") as mock_rerank_cls,
+            patch("src.retrieval.hybrid_search.get_retriever") as mock_get_retriever,
+            patch("src.retrieval.reranker.get_reranker") as mock_get_reranker,
         ):
             mock_ret = MagicMock()
             mock_ret.search.return_value = []
             mock_ret.expand_context.return_value = []
-            mock_ret_cls.return_value = mock_ret
-            mock_rerank_cls.return_value = MagicMock()
+            mock_get_retriever.return_value = mock_ret
+            mock_get_reranker.return_value = MagicMock()
 
             node = CalculationAgentNode()
             result = node.process(sample_rag_state)

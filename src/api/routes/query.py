@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Lazy-loaded module instances
-_hybrid_retriever = None
 _reasoning_pipeline = None
 _pii_mask = None
 _semantic_cache = None
