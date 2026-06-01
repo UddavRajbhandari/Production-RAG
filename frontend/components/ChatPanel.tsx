@@ -544,6 +544,15 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
                 Go to Settings
               </a>
             </>
+          ) : mode === 'retrieve' ? (
+            <>
+              <h2 className="mb-1 font-display text-lg font-semibold text-text-secondary">
+                Search your documents
+              </h2>
+              <p className="max-w-xs text-xs text-text-muted">
+                Find relevant content using hybrid keyword and semantic search.
+              </p>
+            </>
           ) : (
             <>
               <h2 className="mb-1 font-display text-lg font-semibold text-text-secondary">
