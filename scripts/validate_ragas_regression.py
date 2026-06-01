@@ -129,13 +129,14 @@ def compute_ragas_scores(pipeline: ReasoningPipeline, question: str, ground_trut
     else:
         scores["context_precision"] = 0.0
 
-    # Answer relevancy
+    # Answer relevancy: keyword overlap ratio between question and answer.
+    # No length multiplier — answer length is already captured by answer_completeness.
+    # This avoids penalizing concise-but-relevant answers and reduces CI flakiness
+    # from LLM output length variance on the 5-pair subset.
     a_words = set(answer.lower().split()) - stopwords
     if q_words and a_words:
         overlap = len(q_words & a_words)
-        base = overlap / len(q_words)
-        length_factor = min(len(answer.split()) / 50, 1.0)
-        scores["answer_relevancy"] = min(base * length_factor * 2, 1.0)
+        scores["answer_relevancy"] = overlap / len(q_words)
     else:
         scores["answer_relevancy"] = 0.0
 

@@ -424,7 +424,8 @@ def main() -> None:
 
         return matched_terms / len(gt_words)
 
-    # Compute answer relevancy: how well answer addresses the question
+    # Compute answer relevancy: keyword overlap ratio between question and answer.
+    # No length multiplier — answer length is already captured by answer_completeness.
     def compute_answer_relevancy(question: str, generated_answer: str) -> float:
         if not generated_answer:
             return 0.0
@@ -436,19 +437,7 @@ def main() -> None:
             return 0.0
 
         overlap = len(q_words & a_words)
-        answer_length = len(generated_answer.split())
-
-        base_score = overlap / len(q_words)
-        if answer_length < 20:
-            length_factor = 0.5
-        elif answer_length < 50:
-            length_factor = 0.8
-        elif answer_length < 150:
-            length_factor = 1.0
-        else:
-            length_factor = 0.9
-
-        return float(min(base_score * length_factor * 2, 1.0))
+        return float(overlap / len(q_words))
 
     # Compute answer completeness: length-based proxy for answer thoroughness
     def compute_answer_completeness(answer: str) -> float:
