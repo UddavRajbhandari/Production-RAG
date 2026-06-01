@@ -31,7 +31,10 @@ def mock_llm_client() -> Generator[MagicMock, None, None]:
 @pytest.fixture
 def mock_hybrid_retriever() -> Generator[MagicMock, None, None]:
     """Mock HybridRetriever for testing."""
-    with patch("src.reasoning.nodes.retrieval_agent.HybridRetriever") as mock:
+    with (
+        patch("src.reasoning.nodes.retrieval_agent.get_retriever") as mock_get_retriever,
+        patch("src.reasoning.nodes.retrieval_agent.get_reranker") as mock_get_reranker,
+    ):
         retriever = MagicMock()
         retriever.search.return_value = [
             {
@@ -46,7 +49,8 @@ def mock_hybrid_retriever() -> Generator[MagicMock, None, None]:
                 "expanded_text": "Sample context text",
             }
         ]
-        mock.return_value = retriever
+        mock_get_retriever.return_value = retriever
+        mock_get_reranker.return_value = MagicMock()
         yield retriever
 
 
@@ -67,6 +71,7 @@ def sample_rag_state() -> RAGState:
         "pii_redacted_query": None,
         "total_tokens_used": 0,
         "source_files": [],
+        "tenant_id": "",
     }
 
 

@@ -84,10 +84,13 @@ export default function PastQueries({ currentSessionId, onSelectSession, onNewCh
                 const msgCount = session.messages.length;
 
                 return (
-                  <button
+                  <div
                     key={session.id}
                     onClick={() => onSelectSession(session.id)}
-                    className={`group flex w-full items-start gap-2 rounded-input border p-2 text-left transition-all ${
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectSession(session.id); } }}
+                    role="button"
+                    tabIndex={0}
+                    className={`group flex w-full cursor-pointer items-start gap-2 rounded-input border p-2 text-left transition-all ${
                       isActive
                         ? 'border-accent-primary/40 bg-accent-primary/5'
                         : 'border-transparent bg-background-muted/50 hover:border-border hover:bg-background-muted'
@@ -120,7 +123,7 @@ export default function PastQueries({ currentSessionId, onSelectSession, onNewCh
                     >
                       <Trash2 size={10} />
                     </button>
-                  </button>
+                  </div>
                 );
               })}
             </div>

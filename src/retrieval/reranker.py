@@ -15,6 +15,16 @@ logger = logging.getLogger(__name__)
 _ONNX_MODEL_DIR = "storage/reranker_onnx"
 _ONNX_MODEL_PATH = os.path.join(_ONNX_MODEL_DIR, "model.onnx")
 
+_reranker_instance: "CrossEncoderReranker | None" = None
+
+
+def get_reranker(config_path: str = "config/settings.yaml") -> "CrossEncoderReranker":
+    """Returns a module-level singleton CrossEncoderReranker."""
+    global _reranker_instance
+    if _reranker_instance is None:
+        _reranker_instance = CrossEncoderReranker(config_path)
+    return _reranker_instance
+
 
 class CrossEncoderReranker:
     """Reranker that scores query-document pairs using ONNX or PyTorch."""

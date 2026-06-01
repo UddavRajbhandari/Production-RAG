@@ -1,16 +1,17 @@
 import type { QueryRequest, QueryResponse, RetrieveResponse, HealthStatus, DocumentInfo, Source, NodeEvaluation, RagasScores } from '@/types';
-import { getStoredSessionApiKey } from './storage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
-export function getApiKey(): string {
-  return getStoredSessionApiKey() || process.env.NEXT_PUBLIC_API_KEY || '';
-}
 
 function getHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    'X-API-Key': getApiKey(),
+  };
+}
+
+function fetchOpts(extra?: Partial<RequestInit>): RequestInit {
+  return {
+    credentials: 'include',
+    ...(extra || {}),
   };
 }
 
@@ -44,9 +45,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export async function query(request: QueryRequest): Promise<QueryResponse> {
   const response = await fetch(`${API_BASE}/api/v1/query`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(request),
+    ...fetchOpts({ method: 'POST', headers: getHeaders(), body: JSON.stringify(request) }),
   });
   return handleResponse<QueryResponse>(response);
 }
@@ -67,10 +66,8 @@ export async function queryStream(
   onDone: () => void,
   onError: (error: string) => void
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/v1/query/stream`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ ...request, stream: true }),
+  const response = await fetch(`/api/query`, {
+    ...fetchOpts({ method: 'POST', headers: getHeaders(), body: JSON.stringify({ ...request, stream: true }) }),
   });
 
   if (!response.ok) {
@@ -145,16 +142,14 @@ export async function queryStream(
 
 export async function retrieveQuery(request: QueryRequest): Promise<RetrieveResponse> {
   const response = await fetch(`${API_BASE}/api/v1/query/retrieve`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(request),
+    ...fetchOpts({ method: 'POST', headers: getHeaders(), body: JSON.stringify(request) }),
   });
   return handleResponse<RetrieveResponse>(response);
 }
 
 export async function checkHealth(): Promise<HealthStatus> {
   const response = await fetch(`${API_BASE}/api/v1/health`, {
-    method: 'GET',
+    ...fetchOpts({ method: 'GET' }),
   });
   return handleResponse<HealthStatus>(response);
 }
@@ -177,33 +172,28 @@ export async function ingestDocument(
   metadata?: Record<string, string>
 ): Promise<IngestResponse> {
   const response = await fetch(`${API_BASE}/api/v1/ingest`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ text_content: textContent, metadata }),
+    ...fetchOpts({ method: 'POST', headers: getHeaders(), body: JSON.stringify({ text_content: textContent, metadata }) }),
   });
   return handleResponse<IngestResponse>(response);
 }
 
 export async function getDocumentStats(): Promise<DocumentStats> {
   const response = await fetch(`${API_BASE}/api/v1/metadata/stats`, {
-    method: 'GET',
-    headers: getHeaders(),
+    ...fetchOpts({ method: 'GET', headers: getHeaders() }),
   });
   return handleResponse<DocumentStats>(response);
 }
 
 export async function getDepartments(): Promise<string[]> {
   const response = await fetch(`${API_BASE}/api/v1/metadata/departments`, {
-    method: 'GET',
-    headers: getHeaders(),
+    ...fetchOpts({ method: 'GET', headers: getHeaders() }),
   });
   return handleResponse<string[]>(response);
 }
 
 export async function getDocuments(): Promise<DocumentInfo[]> {
   const response = await fetch(`${API_BASE}/api/v1/metadata/documents`, {
-    method: 'GET',
-    headers: getHeaders(),
+    ...fetchOpts({ method: 'GET', headers: getHeaders() }),
   });
   return handleResponse<DocumentInfo[]>(response);
 }

@@ -1,5 +1,6 @@
 """
-Custom rate limiter key function that uses API key when available, falls back to IP.
+Custom rate limiter key function that uses tenant_id from session
+cookie when available, falls back to IP.
 """
 
 from __future__ import annotations
@@ -10,18 +11,16 @@ from slowapi.util import get_remote_address
 
 def get_rate_limit_key(request: Request) -> str:
     """
-    Use API key as rate limit key when available, fallback to IP address.
-
-    This implements per-API-key rate limiting as specified in Phase 8:
-    "60 requests/minute per API key"
+    Use tenant_id from session cookie as rate limit key when available,
+    fallback to IP address.
 
     Args:
         request: The incoming request.
 
     Returns:
-        The rate limit key (API key or IP address).
+        The rate limit key (tenant_id or IP address).
     """
-    api_key = request.headers.get("X-API-Key")
-    if api_key:
-        return f"api_key:{api_key}"
+    session_token = request.cookies.get("session")
+    if session_token:
+        return f"tenant:{session_token[:16]}"
     return f"ip:{get_remote_address(request)}"

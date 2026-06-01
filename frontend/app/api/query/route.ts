@@ -1,31 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryStream } from '@/lib/api-server';
+
+const BACKEND_URL = process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:7860';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { query: string; stream?: boolean; include_sources?: boolean; llm_api_key?: string | null; source_files?: string[] };
     const isStreaming = body.stream === true;
 
+    const sessionCookie = req.cookies.get('session')?.value;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (sessionCookie) {
+      headers['Cookie'] = `session=${sessionCookie}`;
+    }
+
     if (isStreaming) {
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        async start(controller) {
-          const enqueue = (chunk: string) => {
-            controller.enqueue(encoder.encode(`data: ${chunk}\n\n`));
-          };
-
-          const onChunk = (text: string) => enqueue(text);
-          const onError = (error: string) => {
-            enqueue(JSON.stringify({ error, message: error }));
-          };
-
-          await queryStream(body, onChunk, onError);
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
-        },
+      const backendRes = await fetch(`${BACKEND_URL}/api/v1/query/stream`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
       });
 
-      return new Response(stream, {
+      return new Response(backendRes.body, {
         headers: {
           'Content-Type': 'text/event-stream',
           'X-Accel-Buffering': 'no',
@@ -34,12 +31,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const backendRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/v1/query`, {
+    const backendRes = await fetch(`${BACKEND_URL}/api/v1/query`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || '',
-      },
+      headers,
       body: JSON.stringify(body),
     });
     const result = await backendRes.json();

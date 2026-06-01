@@ -8,8 +8,8 @@ import logging
 import time
 
 from src.reasoning.state import RAGState
-from src.retrieval.hybrid_search import HybridRetriever
-from src.retrieval.reranker import CrossEncoderReranker
+from src.retrieval.hybrid_search import get_retriever
+from src.retrieval.reranker import get_reranker
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,8 @@ class RetrievalAgentNode:
     """Node that performs the actual search against the storage backends."""
 
     def __init__(self) -> None:
-        self.retriever = HybridRetriever()
-        self.reranker = CrossEncoderReranker()
+        self.retriever = get_retriever()
+        self.reranker = get_reranker()
 
     def process(self, state: RAGState) -> RAGState:
         """Runs retrieval for each sub-task and aggregates context."""

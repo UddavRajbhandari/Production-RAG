@@ -354,6 +354,13 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<QueryMode>('ask');
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  useEffect(() => {
+    setHasApiKey(!!localStorage.getItem('openrouter_api_key'));
+  }, []);
+
+  const llmAvailable = hasApiKey;
 
   // Streaming state
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -522,12 +529,31 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
             <circle cx="16" cy="16" r="6" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5" />
             <circle cx="16" cy="16" r="2" fill="var(--accent-primary)" />
           </svg>
-          <h2 className="mb-1 font-display text-lg font-semibold text-text-secondary">
-            Ask a question
-          </h2>
-          <p className="max-w-xs text-xs text-text-muted">
-            Query your documents using natural language.
-          </p>
+          {mode === 'ask' && !llmAvailable ? (
+            <>
+              <h2 className="mb-1 font-display text-lg font-semibold text-text-secondary">
+                LLM not configured
+              </h2>
+              <p className="max-w-xs text-xs text-text-muted">
+                Add your OpenRouter API key in Settings to use Ask mode.
+              </p>
+              <a
+                href="/settings"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-input bg-accent-primary px-4 py-2 text-xs font-semibold text-background-primary transition-all hover:opacity-90"
+              >
+                Go to Settings
+              </a>
+            </>
+          ) : (
+            <>
+              <h2 className="mb-1 font-display text-lg font-semibold text-text-secondary">
+                Ask a question
+              </h2>
+              <p className="max-w-xs text-xs text-text-muted">
+                Query your documents using natural language.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
@@ -608,8 +634,9 @@ export default function ChatPanel({ sessionId, messages, onMessagesChange, onNew
           />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-input bg-accent-primary text-background-primary transition-all hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40"
+            disabled={!input.trim() || isLoading || (mode === 'ask' && !llmAvailable)}
+            title={mode === 'ask' && !llmAvailable ? 'Add an API key in Settings first' : undefined}
+            className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-input bg-accent-primary text-background-primary transition-all hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40"
             aria-label={mode === 'ask' ? 'Send message' : 'Search'}
           >
             {isLoading ? (

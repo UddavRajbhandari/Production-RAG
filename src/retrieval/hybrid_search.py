@@ -28,10 +28,23 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_retriever_instance: HybridRetriever | None = None
+
 
 def should_use_qdrant_bm25() -> bool:
     """Check if Qdrant Cloud with native BM25 is available."""
     return bool(os.getenv("QDRANT_URL"))
+
+
+def get_retriever(config_path: str = "config/settings.yaml") -> HybridRetriever:
+    """Returns a module-level singleton HybridRetriever.
+
+    Prevents redundant loading of SentenceTransformer and Reranker models.
+    """
+    global _retriever_instance
+    if _retriever_instance is None:
+        _retriever_instance = HybridRetriever(config_path)
+    return _retriever_instance
 
 
 class HybridRetriever:
