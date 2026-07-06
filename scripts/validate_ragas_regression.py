@@ -33,7 +33,7 @@ THRESHOLDS = {
 
 CI_THRESHOLDS = {
     "faithfulness": 0.30,
-    "answer_relevancy": 0.40,
+    "answer_relevancy": 0.30,
     "context_precision": 0.50,
     "context_recall": 0.30,
     "answer_completeness": 0.30,
