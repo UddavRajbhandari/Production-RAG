@@ -116,18 +116,21 @@ def context_precision(question: str, contexts: list[str]) -> float:
 
 
 def answer_relevancy(question: str, answer: str) -> float:
-    """Keyword overlap between question and answer, modulated by length."""
+    """Keyword overlap ratio between question and answer.
+
+    Raw overlap / len(q_words) — no length multiplier.
+    Answer length is already captured by answer_completeness separately.
+    """
     if not answer:
         return 0.0
     q_words = set(question.lower().split()) - STOPWORDS
-    a_words = set(answer.lower().split()) - STOPWORDS
     if not q_words:
         return 0.5
+    a_words = set(answer.lower().split()) - STOPWORDS
+    if not a_words:
+        return 0.0
     overlap = len(q_words & a_words)
-    base = overlap / len(q_words)
-    length = len(answer.split())
-    length_factor = min(length / 50, 1.0)
-    return min(base * length_factor * 2, 1.0)
+    return overlap / len(q_words)
 
 
 def answer_completeness(answer: str) -> float:

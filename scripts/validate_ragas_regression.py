@@ -25,7 +25,7 @@ from src.reasoning.pipeline import ReasoningPipeline
 # CI uses lower thresholds below because the 5-pair subset has high variance.
 THRESHOLDS = {
     "faithfulness": 0.80,
-    "answer_relevancy": 0.70,
+    "answer_relevancy": 0.55,
     "context_precision": 0.75,
     "context_recall": 0.45,
     "answer_completeness": 0.55,
@@ -33,7 +33,7 @@ THRESHOLDS = {
 
 CI_THRESHOLDS = {
     "faithfulness": 0.30,
-    "answer_relevancy": 0.50,
+    "answer_relevancy": 0.40,
     "context_precision": 0.50,
     "context_recall": 0.30,
     "answer_completeness": 0.30,

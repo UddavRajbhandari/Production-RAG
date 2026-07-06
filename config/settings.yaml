@@ -37,7 +37,7 @@ evaluation:
     min_pairs: 50
     path: data/ground_truth/ground_truth.json
   ragas:
-    alert_threshold_ar: 0.75
+    alert_threshold_ar: 0.55
     alert_threshold_cp: 0.75
     alert_threshold_cr: 0.75
     alert_threshold_faith: 0.8
