@@ -42,6 +42,15 @@ async def verify_api_key(request: Request) -> str:
         if tenant_id:
             request.state.tenant_id = tenant_id
             return session_token
+        # Session cookie present but invalid (expired or tampered)
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "invalid_session",
+                "message": "Your session has expired or is invalid. Please start a new session.",
+                "solution": "Call /api/v1/session/init to create a new session.",
+            },
+        )
 
     # Fallback: X-Tenant-ID header (weaker auth, for cross-origin uploads)
     tenant_id = request.headers.get("X-Tenant-ID")
@@ -51,8 +60,20 @@ async def verify_api_key(request: Request) -> str:
         if get_tenant_store().tenant_exists(tenant_id):
             request.state.tenant_id = tenant_id
             return tenant_id
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "invalid_tenant",
+                "message": f"Tenant ID '{tenant_id}' does not exist.",
+                "solution": "Provide a valid Tenant ID or call /api/v1/session/init to create a new session.",
+            },
+        )
 
     raise HTTPException(
         status_code=401,
-        detail="Not authenticated. Call /api/v1/session/init first.",
+        detail={
+            "error": "not_authenticated",
+            "message": "Not authenticated. No session cookie or Tenant ID provided.",
+            "solution": "Call /api/v1/session/init first to create a session.",
+        },
     )

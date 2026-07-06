@@ -15,6 +15,15 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+class InvalidAPIKeyError(Exception):
+    """Raised when the API returns 401 Unauthorized (invalid or missing API key)."""
+
+    def __init__(self, provider: str = "API", status_code: int = 401) -> None:
+        self.provider = provider
+        self.status_code = status_code
+        super().__init__(f"{provider} authentication failed (HTTP {status_code}): invalid or missing API key")
+
+
 @dataclass
 class APIConfig:
     """Configuration for API-based LLM client."""
@@ -128,10 +137,19 @@ class APILLMClient:
                             response=response,
                         )
 
+                # Detect 401 Unauthorized — invalid API key (do NOT retry)
+                if response.status_code == 401:
+                    raise InvalidAPIKeyError(
+                        provider=self.config.endpoint.split("//")[-1].split("/")[0],
+                        status_code=401,
+                    )
+
                 response.raise_for_status()
                 result = response.json()
                 break  # Success, exit retry loop
 
+            except InvalidAPIKeyError:
+                raise
             except httpx.HTTPStatusError:
                 if response.status_code == 429 and attempt < max_retries - 1:
                     logger.info(f"Rate limited (429), retrying in {5 * (attempt + 1)}s...")

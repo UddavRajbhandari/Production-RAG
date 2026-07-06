@@ -19,6 +19,7 @@ except ImportError:
 
 import requests
 
+from src.reasoning.utils.api_llm_client import InvalidAPIKeyError
 from src.reasoning.utils.config_loader import ConfigLoader
 from src.reasoning.utils.json_parser import safe_json_parse
 
@@ -240,6 +241,16 @@ class LLMClient:
                     success=False,
                     error=result.get("error", "Generation failed"),
                 )
+            except InvalidAPIKeyError as e:
+                logger.error("User-provided OpenRouter key failed: %s", str(e))
+                return LLMResponse(
+                    text="",
+                    raw_response={},
+                    latency_ms=0.0,
+                    success=False,
+                    error="invalid_api_key: The OpenRouter API key you provided is invalid or expired. "
+                    "Please check your key in Settings and try again.",
+                )
             except Exception as e:
                 logger.error("User-provided OpenRouter key failed: %s", str(e))
                 return LLMResponse(
@@ -275,6 +286,9 @@ class LLMClient:
                 # API returned success=False (e.g. max retries exceeded inside _api_client)
                 self.circuit_breaker.record_failure()
                 logger.warning(f"API failed: {result.get('error')}")
+            except InvalidAPIKeyError as e:
+                self.circuit_breaker.record_failure()
+                logger.error("System API key invalid: %s", str(e))
             except Exception as e:
                 # Catch connection errors, timeouts, or 429/500 errors from httpx
                 self.circuit_breaker.record_failure()

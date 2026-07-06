@@ -43,6 +43,7 @@ class TestSessionCookieAuth:
         with pytest.raises(HTTPException) as exc:
             await verify_api_key(req)
         assert exc.value.status_code == 401
+        assert exc.value.detail["error"] == "not_authenticated"
 
     @pytest.mark.asyncio
     async def test_invalid_cookie_raises_401(self, req: MagicMock) -> None:
@@ -50,6 +51,7 @@ class TestSessionCookieAuth:
         with pytest.raises(HTTPException) as exc:
             await verify_api_key(req)
         assert exc.value.status_code == 401
+        assert exc.value.detail["error"] == "invalid_session"
 
 
 class TestTenantIdHeaderFallback:
@@ -79,6 +81,8 @@ class TestTenantIdHeaderFallback:
         with pytest.raises(HTTPException) as exc:
             await verify_api_key(req)
         assert exc.value.status_code == 401
+        assert exc.value.detail["error"] == "invalid_tenant"
+        assert "tnt_nonexistent" in exc.value.detail["message"]
         mock_store.tenant_exists.assert_called_once_with("tnt_nonexistent")
 
     @pytest.mark.asyncio
@@ -86,6 +90,7 @@ class TestTenantIdHeaderFallback:
         with pytest.raises(HTTPException) as exc:
             await verify_api_key(req)
         assert exc.value.status_code == 401
+        assert exc.value.detail["error"] == "not_authenticated"
 
     @pytest.mark.asyncio
     @patch("src.storage.tenant_store.get_tenant_store")

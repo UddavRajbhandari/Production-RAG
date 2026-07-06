@@ -238,6 +238,16 @@ async def query(query_req: QueryRequest, request: Request) -> QueryResponse:
     except Exception as e:
         logger.error("Query processing failed (req=%s): %s", request_id, str(e))
         error_str = str(e).lower()
+        if "invalid_api_key" in error_str:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error": "invalid_api_key",
+                    "message": "The OpenRouter API key you provided is invalid or expired. "
+                    "Please check your key in Settings and try again.",
+                    "solution": "Update your OpenRouter API key in Settings.",
+                },
+            ) from e
         if "all providers failed" in error_str or "no llm" in error_str:
             raise HTTPException(
                 status_code=503,
@@ -446,7 +456,14 @@ async def query_stream(query_req: QueryRequest, request: Request) -> StreamingRe
         except Exception as e:
             logger.error("Streaming query failed: %s", str(e))
             error_str = str(e).lower()
-            if "all providers failed" in error_str or "no llm" in error_str:
+            if "invalid_api_key" in error_str:
+                error_detail = {
+                    "error": "invalid_api_key",
+                    "message": "The OpenRouter API key you provided is invalid or expired. "
+                    "Please check your key in Settings and try again.",
+                }
+                yield f"data: {json.dumps(error_detail)}\n\n"
+            elif "all providers failed" in error_str or "no llm" in error_str:
                 no_llm_msg = "No LLM available. Add your OpenRouter key in Settings, or run Ollama locally."
                 yield f'data: {{"error":"no_llm_available","message":"{no_llm_msg}"}}\n\n'
             else:
