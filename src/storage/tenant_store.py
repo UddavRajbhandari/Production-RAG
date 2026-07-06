@@ -82,7 +82,12 @@ class TenantStore:
         else:
             logger.info("TenantStore using database: %s", db_url.split("@")[-1])
 
-        self.engine = create_engine(db_url)
+        engine_kwargs: dict[str, object] = {}
+        if db_url.startswith("postgresql"):
+            engine_kwargs["pool_pre_ping"] = True
+            engine_kwargs["pool_recycle"] = 300
+
+        self.engine = create_engine(db_url, **engine_kwargs)
         if db_url.startswith("postgresql"):
 
             @event.listens_for(self.engine, "connect")
